@@ -1,6 +1,6 @@
 name: Deploy Frontend to VPS
 
-# 1. Kiedy ma się uruchomić? (Przy każdym wypchnięciu kodu na gałąź main)
+# 1. Uruchomienie (Przy każdym wypchnięciu kodu na gałąź main)
 on:
   push:
     branches:
@@ -19,5 +19,4 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: 96
           script: |
-            # Tutaj podajemy pełną ścieżkę do Twojego skryptu na serwerze
             /home/dzialsprzedazy/deploy-sklep.sh
