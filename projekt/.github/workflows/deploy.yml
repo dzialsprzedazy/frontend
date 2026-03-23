@@ -1,0 +1,23 @@
+name: Deploy Frontend to VPS
+
+# 1. Kiedy ma się uruchomić? (Przy każdym wypchnięciu kodu na gałąź main)
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 2. Połączenie przez SSH i wykonanie skryptu
+      - name: Executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 96
+          script: |
+            # Tutaj podajemy pełną ścieżkę do Twojego skryptu na serwerze
+            /home/dzialsprzedazy/deploy-sklep.sh
