@@ -8,6 +8,7 @@ const products = ref([])
 const isLoading = ref(false)
 const fetchError = ref(null)
 
+// specjalnie ograniczono do ładowania 3 produktów (na potrzeby UX) -> slice
 const loadProducts = async () => {
   isLoading.value = true
   fetchError.value = null
@@ -15,7 +16,7 @@ const loadProducts = async () => {
   try {
     const response = await api.get("products")
 
-    products.value = response.data.map((item, index) => ({
+    products.value = response.data.slice(0, 3).map((item, index) => ({
       id: index,
       name: item.nazwaProduktu,
       price: `${item.cena.toFixed(2)} PLN`,
@@ -61,10 +62,10 @@ onMounted(() => {
 
   <section class="latest-products">
     <div class="products-container">
-      <h2 class="section-title">Products</h2>
+      <h2 class="section-title">Top Products</h2>
 
       <div v-if="isLoading" class="status-message loading">
-        <i class="fa-solid fa-spinner fa-spin"></i> Trwa ładowanie produktów...
+        <i class="fa-solid fa-spinner fa-spin"></i> Loading...
       </div>
 
       <ErrorCard

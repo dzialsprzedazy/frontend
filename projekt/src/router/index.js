@@ -10,30 +10,12 @@ const router = createRouter({
       component: HomeView,
     },
     {
-      path: "/home",
-      name: "home2",
-      component: () => import("../views/HomeView2.vue"),
+      path: "/products",
+      name: "products",
+      component: () => import("../views/Products/ProductsListView.vue"),
     },
-    {
-      path: "/kontakt",
-      name: "kontakt",
-      component: () => import("../views/ContactView.vue"),
-    },
-    {
-      path: "/admin",
-      name: "admin",
-      component: () => import("../views/admin/Dashboard/DashboardView.vue"),
-    },
-    {
-      path: "/admin/cennik",
-      name: "adminCennik",
-      component: () => import("../views/admin/PriceList/PricesView.vue"),
-    },
-    {
-      path: "/admin/cennik/edit/:id",
-      name: "EditTicket",
-      component: () => import("../views/admin/PriceList/EditPriceView.vue"),
-    },
+
+    // ERROR 404 - MUST BE AT THE END OF THE FILE!
     {
       path: "/:catchAll(.*)",
       component: () => import("../views/NotFoundView.vue"),

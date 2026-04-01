@@ -3,17 +3,17 @@
     <div class="top-bar">
       <div class="container top-bar-content">
         <a href="mailto:e-mail" class="contact-link">
-          e-mail <i class="fa-regular fa-envelope"></i>
+          shop@kotika.com <i class="fa-regular fa-envelope"></i>
         </a>
         <a href="tel:phone number" class="contact-link">
-          phone number <i class="fa-solid fa-phone"></i>
+          591 182 321 <i class="fa-solid fa-phone"></i>
         </a>
       </div>
     </div>
 
     <nav class="main-nav">
       <div class="container nav-content">
-        <a href="#" class="logo">Name</a>
+        <a href="/" class="logo">Shop Kotika</a>
 
         <input
           type="checkbox"
@@ -26,11 +26,11 @@
 
         <ul class="nav-links">
           <li>
-            <a href="#" class="active"
+            <router-link to="/"
               >Home <i class="fa-solid fa-chevron-down"></i
-            ></a>
+            ></router-link>
           </li>
-          <li><a href="#">Products</a></li>
+          <li><router-link to="/products">Products</router-link></li>
           <li><a href="#">Shop</a></li>
           <li><a href="#">Contact</a></li>
         </ul>
@@ -76,6 +76,7 @@
   color: #ffffff;
   padding: 10px 0;
   font-size: 13px;
+  opacity: 0.9;
 }
 
 .top-bar-content {
@@ -100,9 +101,9 @@
 
 .main-nav {
   background-color: #ffffff;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
   padding: 20px 0;
   position: relative;
+  border-bottom: 1px solid #ccc;
 }
 
 .nav-content {
@@ -142,7 +143,7 @@
 
 .nav-links a:hover,
 .nav-links a.active {
-  color: #ed4c8b;
+  color: #6734c0;
 }
 
 .nav-links a.active i {
@@ -158,26 +159,31 @@
 
 .search-input {
   width: 100%;
-  padding: 12px 15px;
+  padding: 10px 15px;
   border: 1px solid #dcdcdc;
   border-right: none;
   outline: none;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
 }
 
 .search-btn {
-  background-color: #ed4c8b;
+  background-color: #6b3cbd;
   color: #ffffff;
   border: none;
-  padding: 12px 20px;
+  padding: 10px 20px;
   cursor: pointer;
   font-size: 16px;
   transition: background-color 0.3s ease;
+  opacity: 0.8;
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
 }
 
 .search-btn:hover {
-  background-color: #d63d7a;
+  background-color: #5724b1;
 }
 
 .user-actions {
@@ -194,6 +200,7 @@
   align-items: center;
   gap: 8px;
   font-size: 16px;
+  opacity: 0.9;
   transition: color 0.3s ease;
 }
 

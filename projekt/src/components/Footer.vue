@@ -6,7 +6,7 @@
       <div class="container">
         <div class="footer-grid">
           <div class="footer-col brand-col">
-            <a href="#" class="logo">Name</a>
+            <a href="#" class="logo">Shop Kotika</a>
             <form class="subscribe-form">
               <input type="email" placeholder="Enter Email Address" />
               <button type="submit">Sign Up</button>
@@ -65,6 +65,8 @@
 
 <style scoped>
 .footer {
+  border-top: 1px solid #ccc;
+
   color: #8a8fb9;
   font-size: 14px;
 }
