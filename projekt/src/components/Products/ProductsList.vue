@@ -719,9 +719,9 @@ onMounted(() => {
   width: 45px;
   height: 45px;
   border-radius: 50%;
-  background-color: #ffffff;
+  background-color: #3f509e;
   border: 1px solid #eae8f5;
-  color: #151875;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -731,9 +731,7 @@ onMounted(() => {
 }
 
 .icon-btn:hover {
-  background-color: #f3f0ff;
-  border-color: #d5ccf8;
-  color: #7d4cd4;
+  background-color: #2e3b75;
 }
 
 @media (max-width: 1024px) {
