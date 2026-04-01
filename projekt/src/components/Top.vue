@@ -206,7 +206,7 @@
 
 .action-link:hover,
 .cart-link:hover {
-  color: #ed4c8b;
+  color: #6734c0;
 }
 
 .cart-link {

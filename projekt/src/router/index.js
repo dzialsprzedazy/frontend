@@ -14,6 +14,11 @@ const router = createRouter({
       name: "products",
       component: () => import("../views/Products/ProductsListView.vue"),
     },
+    {
+      path: "/products/:id",
+      name: "productDetails",
+      component: () => import("../views/Products/ProductDetailsView.vue"),
+    },
 
     // ERROR 404 - MUST BE AT THE END OF THE FILE!
     {

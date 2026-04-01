@@ -285,9 +285,11 @@ onMounted(() => {
                 <button class="icon-btn" title="Add to Wishlist">
                   <i class="fa-regular fa-heart"></i>
                 </button>
-                <button class="icon-btn" title="Quick View">
-                  <i class="fa-solid fa-expand"></i>
-                </button>
+                <router-link :to="`/products/${item.idProduktu}`">
+                  <button class="icon-btn" title="Show the Product">
+                    <i class="fa-solid fa-expand"></i>
+                  </button>
+                </router-link>
               </div>
             </div>
           </div>
