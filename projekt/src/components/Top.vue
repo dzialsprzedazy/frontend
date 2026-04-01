@@ -1,119 +1,278 @@
-<script setup></script>
-
 <template>
-  <nav>
-    <div class="nav-wrapper">
-      <div class="logo">
-        <RouterLink
-          :to="{ name: 'home' }"
-          class="name"
-          style="text-decoration: none; color: #ffffff"
-        >
-          Screenix
-        </RouterLink>
-        <div class="svg">
-          <!--?xml version="1.0" ?-->
-          <svg
-            enable-background="new 0 0 91 91"
-            height="91px"
-            id="Layer_1"
-            version="1.1"
-            viewBox="0 0 91 91"
-            width="91px"
-            xml:space="preserve"
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-          >
-            <g>
-              <path
-                d="M2.776,82.355c9.909,0.493,19.864,0.474,29.785,0.675c4.745,0.096,9.491,0.192,14.236,0.289   c4.266,0.088,8.71,0.533,12.947-0.112c5.219-0.794,7.587-4.099,8.733-8.277c5.639,2.646,11.217,5.551,16.513,8.796   c2.229,1.366,4.858-0.429,4.974-2.854c0.6-12.705,1.109-25.559,0.538-38.273c-0.119-2.633-2.789-4.175-5.129-2.943   c-4.98,2.626-10.757,4.983-15.659,8.17C69.66,46.556,69.6,45.282,69.527,44c-0.083-1.503-1.197-2.745-2.762-2.763   c-1.384-0.015-2.768-0.044-4.151-0.063c6.359-3.657,10.901-10.495,10.446-18.095c-0.318-5.311-3.085-10.052-7.46-13.059   C60.25,6.346,53.666,6.367,47.451,6.877c-3.608,0.297-4.903,3.281-4.257,5.765c-4.441,2.589-8.013,6.445-9.174,11.454   c-0.71-3.47-2.85-6.56-5.808-8.536c-4.253-2.841-9.419-2.818-14.321-2.421c-2.886,0.233-3.913,2.631-3.378,4.613   c-4.341,2.521-7.654,6.531-7.629,11.875c0.022,4.417,2.598,8.021,6.14,10.307c-1.642,0.024-3.28,0.068-4.91,0.159   C0.094,40.318,0,45.797,3.699,46.475C2.823,57.563,1.154,68.648,0.141,79.721C0.007,81.189,1.46,82.289,2.776,82.355z    M62.79,75.273c-1.683,3.313-6.137,2.772-9.281,2.717c-15.992-0.289-32.028-0.98-48.026-0.914   C5.749,66.959,5.75,56.777,6.235,46.671c9.681,0.56,19.595-0.043,29.273-0.036c9.551,0.007,19.103,0.03,28.654,0.112   c0.373,6.491,0.7,12.979,0.045,19.471C63.918,69.068,64.117,72.656,62.79,75.273z M83.681,47.916   c0.01,9.057,0.073,18.098-0.146,27.154c-4.364-2.729-13.597-8.698-13.898-8.805c0.276-4.265,0.338-8.479,0.262-12.711   C72.776,52.668,81.92,48.717,83.681,47.916z M39.096,26.115c0.532-4.416,3.713-7.801,7.6-10.17c0.595,0.11,1.255,0.127,1.984,0.01   c6.434-1.03,16.544-1.124,17.253,7.675c0.579,7.199-5.986,13.501-12.848,14.088C46.634,38.268,38.208,33.489,39.096,26.115z    M33.868,30.115c0.858,4.525,3.912,8.25,7.859,10.693c-2.073-0.043-4.146-0.083-6.219-0.128c-3.112-0.068-6.25-0.2-9.396-0.336   C29.905,38.096,32.828,34.394,33.868,30.115z M7.201,28.596c0.342-3.598,2.951-6.334,6.114-8.242   c0.466,0.084,0.982,0.096,1.553,0.004c5.275-0.837,13.589-0.764,13.738,6.58c0.114,5.564-4.898,10.26-10.234,10.735   C13.316,38.124,6.65,34.391,7.201,28.596z"
-              ></path>
-            </g>
-          </svg>
-        </div>
-      </div>
-      <div class="links">
-        <ul>
-          <li>
-            <RouterLink :to="{ name: 'kontakt' }" class="a">
-              Kontakt
-            </RouterLink>
-          </li>
-        </ul>
+  <header class="header">
+    <div class="top-bar">
+      <div class="container top-bar-content">
+        <a href="mailto:e-mail" class="contact-link">
+          e-mail <i class="fa-regular fa-envelope"></i>
+        </a>
+        <a href="tel:phone number" class="contact-link">
+          phone number <i class="fa-solid fa-phone"></i>
+        </a>
       </div>
     </div>
-  </nav>
+
+    <nav class="main-nav">
+      <div class="container nav-content">
+        <a href="#" class="logo">Name</a>
+
+        <input
+          type="checkbox"
+          id="mobile-menu-toggle"
+          class="mobile-menu-checkbox"
+        />
+        <label for="mobile-menu-toggle" class="mobile-menu-btn">
+          <i class="fa-solid fa-bars"></i>
+        </label>
+
+        <ul class="nav-links">
+          <li>
+            <a href="#" class="active"
+              >Home <i class="fa-solid fa-chevron-down"></i
+            ></a>
+          </li>
+          <li><a href="#">Products</a></li>
+          <li><a href="#">Shop</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+
+        <div class="search-container">
+          <input type="text" class="search-input" placeholder="" />
+          <button class="search-btn">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+
+        <div class="user-actions">
+          <a href="#" class="action-link"
+            >Login <i class="fa-regular fa-user"></i
+          ></a>
+          <a href="#" class="action-link"
+            >Wishlist <i class="fa-regular fa-heart"></i
+          ></a>
+          <a href="#" class="cart-link"
+            ><i class="fa-solid fa-cart-shopping"></i
+          ></a>
+        </div>
+      </div>
+    </nav>
+  </header>
 </template>
 
-<style>
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500&display=swap");
+<style scoped>
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css");
 
-* {
-  margin: 0;
-  padding: 0;
+.header * {
   box-sizing: border-box;
 }
 
-html {
-  font-family: "Poppins", sans-serif;
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: #4d1b8f;
+.top-bar {
+  background-color: #7e4cd4;
+  color: #ffffff;
+  padding: 10px 0;
+  font-size: 13px;
+}
+
+.top-bar-content {
   display: flex;
-  max-height: 80px;
-  height: 100%;
+  gap: 40px;
+  justify-content: flex-start;
+  padding-left: 20%;
 }
 
-nav .nav-wrapper {
-  padding: 0 1.1rem;
-  max-width: 1450px;
-  width: 100%;
-  margin-inline: auto;
+.contact-link {
+  color: #ffffff;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.3s ease;
+}
+
+.contact-link:hover {
+  opacity: 0.8;
+}
+
+.main-nav {
+  background-color: #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  padding: 20px 0;
+  position: relative;
+}
+
+.nav-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20px;
 }
 
-nav .logo {
+.logo {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0a0a2a;
+  text-decoration: none;
+  letter-spacing: -1px;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 30px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #0a0a2a;
+  font-weight: 500;
+  font-size: 15px;
   display: flex;
   align-items: center;
-  flex-direction: row-reverse;
-  gap: 1rem;
-  color: #fff;
-  font-size: 1.1rem;
+  gap: 5px;
+  transition: color 0.3s ease;
 }
 
-nav svg {
-  fill: white;
-  max-width: 50px;
-  width: 100%;
+.nav-links a:hover,
+.nav-links a.active {
+  color: #ed4c8b;
 }
 
-nav .links ul {
-  list-style-type: none;
+.nav-links a.active i {
+  font-size: 12px;
+}
+
+.search-container {
   display: flex;
-  color: #fff;
-  text-transform: uppercase;
-  gap: 1.5rem;
+  align-items: center;
+  flex: 1;
+  max-width: 400px;
 }
 
-nav .links ul li a {
-  color: #fff;
+.search-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #dcdcdc;
+  border-right: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.search-btn {
+  background-color: #ed4c8b;
+  color: #ffffff;
+  border: none;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.search-btn:hover {
+  background-color: #d63d7a;
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+
+.action-link {
   text-decoration: none;
+  color: #0a0a2a;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  transition: color 0.3s ease;
 }
 
-@media screen and (max-width: 600px) {
-  nav {
-    max-height: 800px;
-    padding-bottom: 1.3rem;
+.action-link:hover,
+.cart-link:hover {
+  color: #ed4c8b;
+}
+
+.cart-link {
+  color: #0a0a2a;
+  font-size: 20px;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.mobile-menu-checkbox {
+  display: none;
+}
+
+.mobile-menu-btn {
+  display: none;
+  font-size: 24px;
+  color: #0a0a2a;
+  cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+  .top-bar-content {
+    padding-left: 0;
+    justify-content: center;
+  }
+  .nav-links {
+    gap: 15px;
+  }
+  .user-actions {
+    gap: 15px;
+  }
+}
+
+@media (max-width: 900px) {
+  .mobile-menu-btn {
+    display: block;
   }
 
-  nav .nav-wrapper {
+  .nav-links {
+    display: none;
     flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background-color: #ffffff;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+  }
+
+  .mobile-menu-checkbox:checked ~ .nav-links {
+    display: flex;
+  }
+
+  .search-container {
+    display: none;
+  }
+
+  .user-actions .action-link {
+    font-size: 0;
+  }
+
+  .user-actions .action-link i {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-bar-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
   }
 }
 </style>
