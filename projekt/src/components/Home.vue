@@ -8,7 +8,7 @@ const products = ref([])
 const isLoading = ref(false)
 const fetchError = ref(null)
 
-// specjalnie ograniczono do ładowania 3 produktów (na potrzeby UX) -> slice
+// specjalnie ograniczono do ładowania 3 produktów (na potrzeby UX) -> slice :)
 const loadProducts = async () => {
   isLoading.value = true
   fetchError.value = null
