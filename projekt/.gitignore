@@ -1,3 +1,8 @@
 node_modules/
 # Pliki systemowe macOS
 .DS_Store
+package-lock.json
+#Webstorm
+.idea/
+
+
