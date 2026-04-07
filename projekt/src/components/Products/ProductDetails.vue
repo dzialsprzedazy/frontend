@@ -53,7 +53,7 @@ onMounted(() => {
     <div class="container">
       <Transition name="page-fade" mode="out-in">
         <div v-if="isLoading" class="status-message loading">
-          <i class="fa-solid fa-spinner fa-spin"></i> Ładowanie produktu...
+          <i class="fa-solid fa-spinner fa-spin"></i> Loading product...
         </div>
 
         <ErrorCard
@@ -99,7 +99,7 @@ onMounted(() => {
                     ★
                   </span>
                 </div>
-                <span class="count">({{ product.liczbaOpinii }} opinii)</span>
+                <span class="count">({{ product.liczbaOpinii }} reviews)</span>
               </div>
 
               <div class="price-box">
@@ -108,7 +108,9 @@ onMounted(() => {
               </div>
 
               <p class="product-description">
-                {{ product.opis || "Brak opisu dla tego produktu." }}
+                {{
+                  product.opis || "No description available for this product."
+                }}
               </p>
 
               <div class="product-actions">
@@ -168,19 +170,19 @@ onMounted(() => {
             <div class="tab-content card-container">
               <div v-if="currentTab === 'Description'" class="fade-in">
                 <h3 class="tab-heading">{{ product.nazwaProduktu }}</h3>
-                <p class="tab-text">{{ product.opis || "Brak opisu." }}</p>
+                <p class="tab-text">{{ product.opis || "No description." }}</p>
               </div>
 
               <div v-if="currentTab === 'Additional Info'" class="fade-in">
                 <ul class="info-list">
                   <li>
-                    <span class="info-label">Autor:</span>
+                    <span class="info-label">Author:</span>
                     <span class="info-value"
                       >{{ product.autorImie }} {{ product.autorNazwisko }}</span
                     >
                   </li>
                   <li v-if="product.dataWydania">
-                    <span class="info-label">Data wydania:</span>
+                    <span class="info-label">Release date:</span>
                     <span class="info-value">{{ product.dataWydania }}</span>
                   </li>
                 </ul>
@@ -226,11 +228,8 @@ onMounted(() => {
                   <div class="empty-icon-wrap">
                     <i class="fa-regular fa-comment-dots"></i>
                   </div>
-                  <h3>Brak opinii</h3>
-                  <p>
-                    Na razie brak opinii. Bądź pierwszy, który oceni ten
-                    produkt!
-                  </p>
+                  <h3>No reviews</h3>
+                  <p>No reviews yet. Be the first to rate this product!</p>
                 </div>
               </div>
             </div>
@@ -299,7 +298,7 @@ onMounted(() => {
               <div class="empty-icon-wrap">
                 <i class="fa-solid fa-box-open"></i>
               </div>
-              <p>Brak powiązanych produktów dla tej pozycji.</p>
+              <p>No related products for this item.</p>
             </div>
           </section>
         </div>
