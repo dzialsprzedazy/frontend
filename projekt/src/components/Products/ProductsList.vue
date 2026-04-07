@@ -240,13 +240,19 @@ onMounted(() => {
           :key="item.idProduktu"
         >
           <div class="product-image-box">
-            <i class="fa-regular fa-image"></i>
+              <router-link :to="`/products/${item.idProduktu}`" class="image-link">
+              <i class="fa-regular fa-image"></i>
+            </router-link>
           </div>
 
           <div class="product-info">
             <div class="product-header">
               <div class="title-wrap">
-                <h2 class="product-name">{{ item.nazwaProduktu }}</h2>
+                <h2 class="product-name">
+                  <router-link :to="`/products/${item.idProduktu}`" class="product-title-link">
+                    {{ item.nazwaProduktu }}
+                  </router-link>
+                </h2>
                 <p class="product-author">
                   By
                   <strong>{{ item.autorImie }} {{ item.autorNazwisko }}</strong>
@@ -734,6 +740,26 @@ onMounted(() => {
 
 .icon-btn:hover {
   background-color: #2e3b75;
+}
+
+.product-title-link {
+  text-decoration: none; 
+  color: inherit;        
+  transition: color 0.2s ease;
+}
+
+.product-title-link:hover {
+  color: #7d4cd4;     
+}
+
+.image-link {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  text-decoration: none;
 }
 
 @media (max-width: 1024px) {
