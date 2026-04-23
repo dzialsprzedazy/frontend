@@ -20,6 +20,36 @@ const router = createRouter({
       component: () => import("../views/Products/ProductDetailsView.vue"),
     },
 
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/Account/LoginView.vue'),
+    },
+
+    {
+      path: '/register',
+      name: 'register',
+      component: () => import('../views/Account/RegisterView.vue'),
+    },
+
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/Account/UserProfileView.vue'),
+    },
+
+    {
+      path: '/forgot-password',
+      name: 'forgotPassword',
+      component: () => import('../views/Account/ForgotPasswordView.vue'),
+    },
+
+    {
+      path: '/reset-password',
+      name: 'resetPassword',
+      component: () => import('../views/Account/ResetPasswordView.vue'),
+    },
+
     // ERROR 404 - MUST BE AT THE END OF THE FILE!
     {
       path: "/:catchAll(.*)",

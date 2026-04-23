@@ -43,9 +43,9 @@
         </div>
 
         <div class="user-actions">
-          <a href="#" class="action-link"
+          <router-link to="/login" class="action-link"
             >Login <i class="fa-regular fa-user"></i
-          ></a>
+          ></router-link>
           <a href="#" class="action-link"
             >Wishlist <i class="fa-regular fa-heart"></i
           ></a>
