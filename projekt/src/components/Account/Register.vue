@@ -2,6 +2,7 @@
 import { ref } from "vue"
 import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+import api from "@/services/axios.js"
 
 const { showAlert } = useAlerts()
 const router = useRouter()
@@ -38,29 +39,7 @@ const handleRegister = async () => {
   try {
     isLoading.value = true
 
-    const response = await fetch("http://localhost:5238/api/users/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null)
-
-      const message = Array.isArray(errorData)
-        ? errorData.map(e => e.description).join(" ")
-        : "Registration failed."
-
-      showAlert({
-        type: "error",
-        message,
-        position: "top-right",
-      })
-
-      return
-    }
+    await api.post("users/register", payload)
 
     showAlert({
       type: "success",
@@ -70,9 +49,15 @@ const handleRegister = async () => {
 
     router.push("/login")
   } catch (error) {
+    const errorData = error.response?.data
+
+    const message = Array.isArray(errorData)
+      ? errorData.map(e => e.description).join(" ")
+      : errorData?.message || "Registration failed."
+
     showAlert({
       type: "error",
-      message: "Could not connect to the server.",
+      message,
       position: "top-right",
     })
   } finally {

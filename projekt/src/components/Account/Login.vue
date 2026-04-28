@@ -2,6 +2,7 @@
 import { ref } from "vue"
 import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+import api from "@/services/axios.js"
 
 const { showAlert } = useAlerts()
 const router = useRouter()
@@ -23,27 +24,12 @@ const handleLogin = async () => {
   try {
     isLoading.value = true
 
-    const response = await fetch("http://localhost:5238/api/users/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: emailData.value,
-        password: passwordData.value,
-      }),
+    const response = await api.post("users/login", {
+      email: emailData.value,
+      password: passwordData.value,
     })
 
-    if (!response.ok) {
-      showAlert({
-        type: "error",
-        message: "Invalid email or password.",
-        position: "top-right",
-      })
-      return
-    }
-
-    const data = await response.json()
+    const data = response.data
 
     localStorage.setItem("token", data.token)
     localStorage.setItem("user", JSON.stringify(data.user))
@@ -56,9 +42,18 @@ const handleLogin = async () => {
 
     router.push("/profile")
   } catch (error) {
+    console.error("Login error:", error)
+
+    const errorData = error.response?.data
+
+    const message =
+      typeof errorData === "string"
+        ? errorData
+        : errorData?.message || "Invalid email or password."
+
     showAlert({
       type: "error",
-      message: "Could not connect to the server.",
+      message,
       position: "top-right",
     })
   } finally {

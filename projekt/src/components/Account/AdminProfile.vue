@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+import api from "@/services/axios.js"
 
 const router = useRouter()
 const { showAlert } = useAlerts()
@@ -15,30 +16,10 @@ const phoneNumber = ref("")
 const isEditing = ref(false)
 const isLoading = ref(false)
 
-const API_URL = "http://localhost:5238/api/users"
-
-const getToken = () => localStorage.getItem("token")
-
 const loadUserDetails = async () => {
-  const token = getToken()
-
-  if (!token) {
-    router.push("/login")
-    return
-  }
-
   try {
-    const response = await fetch(`${API_URL}/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error("Failed to load user details")
-    }
-
-    const data = await response.json()
+    const response = await api.get("users/me")
+    const data = response.data
 
     adminName.value = data.imie || ""
     adminSurname.value = data.nazwisko || ""
@@ -46,6 +27,13 @@ const loadUserDetails = async () => {
     phoneNumber.value = data.telefon || ""
     role.value = data.role || "Administrator"
   } catch (error) {
+    console.error("Load user details error:", error)
+
+    if (error.response?.status === 401) {
+      router.push("/login")
+      return
+    }
+
     showAlert({
       type: "error",
       message: "Could not load user details.",
@@ -55,32 +43,14 @@ const loadUserDetails = async () => {
 }
 
 const saveUserDetails = async () => {
-  const token = getToken()
-
-  if (!token) {
-    router.push("/login")
-    return
-  }
-
   try {
     isLoading.value = true
 
-    const response = await fetch(`${API_URL}/details`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        imie: adminName.value,
-        nazwisko: adminSurname.value,
-        numerTelefonu: phoneNumber.value,
-      }),
+    await api.put("users/details", {
+      imie: adminName.value,
+      nazwisko: adminSurname.value,
+      numerTelefonu: phoneNumber.value,
     })
-
-    if (!response.ok) {
-      throw new Error("Failed to update details")
-    }
 
     showAlert({
       type: "success",
@@ -91,6 +61,8 @@ const saveUserDetails = async () => {
     isEditing.value = false
     await loadUserDetails()
   } catch (error) {
+    console.error("Update user details error:", error)
+
     showAlert({
       type: "error",
       message: "Could not update details.",
