@@ -8,3 +8,21 @@
   box-sizing: border-box;
   font-family: "Poppins", sans-serif;
 }
+
+:root {
+  /* Zwiększamy ogólną szerokość (domyślnie jest to ok. 300px) */
+  --nv-min-width: 400px;
+  
+  /* Więcej przestrzeni (paddingów) wewnątrz alertu */
+  --nv-spacing: 1.15rem;
+  
+  /* Powiększenie czcionki wiadomości i ewentualnego tytułu */
+  --nv-message-size: 1.1rem;
+  --nv-title-size: 1.2rem;
+  
+  /* Powiększenie ikon (ikona sukcesu, błędu, przycisk zamykania) */
+  --nv-icon-size: 1.5rem;
+  
+  /* Zaokrąglenie rogów - możesz zmienić jeśli wolisz bardziej kanciaste */
+  --nv-radius: 8px;
+}

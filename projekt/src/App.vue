@@ -1,14 +1,14 @@
 <script setup>
-import { RouterView } from "vue-router"
-import { Notifications, Notification } from "notivue"
+import { RouterLink, RouterView } from 'vue-router'
+import { Notivue, Notification } from 'notivue'
 </script>
 
 <template>
   <RouterView />
-
-  <Notifications>
-    <Notification />
-  </Notifications>
+  <Notivue v-slot="item">
+    <Notification :item="item" />
+  </Notivue>
 </template>
 
-<style scoped></style>
+<style scoped>
+</style>

@@ -50,8 +50,8 @@
 import { ref } from "vue"
 import { useRouter } from "vue-router"
 
-import { useAlerts } from "../alerts/useAlerts"
-const alerts = useAlerts()
+import { useAlerts } from "@/components/alerts/useAlerts.js"
+const { showAlert } = useAlerts()
 
 const emailData = ref("")
 const passwordData = ref("")
@@ -68,8 +68,15 @@ const handleLogin = async () => {
     email: emailData.value,
     password: passwordData.value,
   })
-  alerts.success("Login successful! Redirecting to your profile 🎉")
-  router.push("/profile") // Przekierowanie do nowej strony profilu
+
+  
+  showAlert({
+    type: 'success',
+    message: 'Pomyślnie zalogowano!',
+    position: 'top-right'
+  })
+  
+  router.push("/profile")
 }
 </script>
 
