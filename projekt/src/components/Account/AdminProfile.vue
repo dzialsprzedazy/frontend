@@ -3,8 +3,8 @@ import { ref } from "vue"
 import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 
-const userName = ref("Dominik")
-const userEmail = ref("dominik.kwiatek@gmail.com")
+const adminName = ref("Dominik")
+const adminEmail = ref("admin@kwiatek.com")
 
 const router = useRouter()
 const { showAlert } = useAlerts()
@@ -12,7 +12,7 @@ const { showAlert } = useAlerts()
 const handleLogout = () => {
   showAlert({
     type: "success",
-    message: "Successfully logged out.",
+    message: "Admin successfully logged out.",
     position: "top-right",
   })
   router.push("/login")
@@ -23,10 +23,10 @@ const handleLogout = () => {
   <div class="page-wrapper">
     <div class="header-banner">
       <div class="container">
-        <h1 class="header-title">My Account</h1>
+        <h1 class="header-title">Admin Dashboard</h1>
         <p class="breadcrumbs">
           Home <span class="dot-separator">•</span>
-          <span class="active-page">Dashboard</span>
+          <span class="active-page">Admin Dashboard</span>
         </p>
       </div>
     </div>
@@ -41,19 +41,19 @@ const handleLogout = () => {
             </li>
             <li>
               <span class="icon">📦</span>
-              <span class="menu-text">Order History</span>
+              <span class="menu-text">Order Management</span>
             </li>
             <li>
-              <span class="icon">🏷️</span>
-              <span class="menu-text">Special Offers</span>
+              <span class="icon">🛍️</span>
+              <span class="menu-text">Product Management</span>
+            </li>
+            <li>
+              <span class="icon">👥</span>
+              <span class="menu-text">User Management</span>
             </li>
             <li>
               <span class="icon">👤</span>
-              <span class="menu-text">Account Details</span>
-            </li>
-            <li>
-              <span class="icon">📍</span>
-              <span class="menu-text">Saved Addresses</span>
+              <span class="menu-text">Admin Details</span>
             </li>
             <li class="divider"></li>
             <li @click="handleLogout" class="logout-item">
@@ -68,42 +68,43 @@ const handleLogout = () => {
         <div class="dashboard-card">
           <div class="profile-header">
             <div class="profile-avatar">
-              {{ userName.charAt(0) }}
+              {{ adminName.charAt(0) }}
             </div>
             <div class="profile-title">
-              <h2>{{ userName }}</h2>
-              <p>{{ userEmail }}</p>
+              <h2>{{ adminName }}</h2>
+              <p class="admin-badge">Administrator</p>
+              <p class="email-text">{{ adminEmail }}</p>
             </div>
-            <button class="btn-primary">Edit Profile</button>
+            <button class="btn-primary">Edit Details</button>
           </div>
 
           <div class="details-section">
-            <h3 class="section-title">Personal Information</h3>
+            <h3 class="section-title">Administrative Information</h3>
             <div class="details-grid">
               <div class="detail-group">
                 <span class="detail-label">First Name</span>
-                <span class="detail-value">{{ userName }}</span>
+                <span class="detail-value">{{ adminName }}</span>
               </div>
               <div class="detail-group">
                 <span class="detail-label">Last Name</span>
                 <span class="detail-value">Kwiatek</span>
               </div>
               <div class="detail-group">
-                <span class="detail-label">Email Address</span>
-                <span class="detail-value">{{ userEmail }}</span>
+                <span class="detail-label">Admin Email</span>
+                <span class="detail-value">{{ adminEmail }}</span>
               </div>
               <div class="detail-group">
-                <span class="detail-label">Phone Number</span>
-                <span class="detail-value">+48 123 456 789</span>
+                <span class="detail-label">Access Level</span>
+                <span class="detail-value">Super Admin</span>
               </div>
             </div>
           </div>
 
           <div class="security-section">
-            <h3 class="section-title">Security</h3>
+            <h3 class="section-title">Security & Access</h3>
             <div class="security-flex">
               <div class="security-info">
-                <span class="detail-label">Password</span>
+                <span class="detail-label">Admin Password</span>
                 <span class="detail-value">••••••••••••</span>
               </div>
               <button class="btn-outline">Change Password</button>
@@ -257,7 +258,7 @@ const handleLogout = () => {
 .profile-avatar {
   width: 80px;
   height: 80px;
-  background-color: #fb2e86;
+  background-color: #151875;
   color: #ffffff;
   font-size: 2.2rem;
   font-weight: 700;
@@ -266,7 +267,7 @@ const handleLogout = () => {
   justify-content: center;
   border-radius: 50%;
   margin-right: 1.5rem;
-  box-shadow: 0 4px 10px rgba(251, 46, 134, 0.2);
+  box-shadow: 0 4px 10px rgba(21, 24, 117, 0.2);
 }
 
 .profile-title {
@@ -276,11 +277,24 @@ const handleLogout = () => {
 .profile-title h2 {
   font-size: 1.8rem;
   color: #151875;
-  margin: 0 0 0.3rem 0;
+  margin: 0 0 0.2rem 0;
   font-weight: 700;
 }
 
-.profile-title p {
+.admin-badge {
+  display: inline-block;
+  background-color: #fdf2f6;
+  color: #fb2e86;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  margin: 0 0 0.4rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.email-text {
   color: #8a8fb9;
   font-size: 1.05rem;
   margin: 0;
