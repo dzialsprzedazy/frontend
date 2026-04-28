@@ -9,6 +9,7 @@ const router = useRouter()
 const emailData = ref("")
 const passwordData = ref("")
 const confirmPasswordData = ref("")
+const isLoading = ref(false)
 
 const handleRegister = async () => {
   if (!emailData.value || !passwordData.value || !confirmPasswordData.value) {
@@ -34,15 +35,49 @@ const handleRegister = async () => {
     password: passwordData.value,
   }
 
-  console.log("Data to send to the registration endpoint:", payload)
+  try {
+    isLoading.value = true
 
-  showAlert({
-    type: "success",
-    message: "Registration successful! Redirecting to login.",
-    position: "top-right",
-  })
+    const response = await fetch("http://localhost:5238/api/users/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
 
-  router.push("/login")
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null)
+
+      const message = Array.isArray(errorData)
+        ? errorData.map(e => e.description).join(" ")
+        : "Registration failed."
+
+      showAlert({
+        type: "error",
+        message,
+        position: "top-right",
+      })
+
+      return
+    }
+
+    showAlert({
+      type: "success",
+      message: "Registration successful!",
+      position: "top-right",
+    })
+
+    router.push("/login")
+  } catch (error) {
+    showAlert({
+      type: "error",
+      message: "Could not connect to the server.",
+      position: "top-right",
+    })
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 

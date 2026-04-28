@@ -10,11 +10,8 @@ const router = useRouter()
 const { showAlert } = useAlerts()
 
 const handleLogout = () => {
-  showAlert({
-    type: "success",
-    message: "Successfully logged out.",
-    position: "top-right",
-  })
+  localStorage.removeItem("token")
+  localStorage.removeItem("user")
   router.push("/login")
 }
 </script>

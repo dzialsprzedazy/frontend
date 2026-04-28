@@ -8,25 +8,62 @@ const router = useRouter()
 
 const emailData = ref("")
 const passwordData = ref("")
+const isLoading = ref(false)
 
 const handleLogin = async () => {
   if (!emailData.value || !passwordData.value) {
-    alert("Please enter both email and password.")
+    showAlert({
+      type: "error",
+      message: "Please enter both email and password.",
+      position: "top-right",
+    })
     return
   }
 
-  console.log("Data to send to the login endpoint:", {
-    email: emailData.value,
-    password: passwordData.value,
-  })
+  try {
+    isLoading.value = true
 
-  showAlert({
-    type: "success",
-    message: "Successfully logged in!",
-    position: "top-right",
-  })
+    const response = await fetch("http://localhost:5238/api/users/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: emailData.value,
+        password: passwordData.value,
+      }),
+    })
 
-  router.push("/profile")
+    if (!response.ok) {
+      showAlert({
+        type: "error",
+        message: "Invalid email or password.",
+        position: "top-right",
+      })
+      return
+    }
+
+    const data = await response.json()
+
+    localStorage.setItem("token", data.token)
+    localStorage.setItem("user", JSON.stringify(data.user))
+
+    showAlert({
+      type: "success",
+      message: "Successfully logged in!",
+      position: "top-right",
+    })
+
+    router.push("/profile")
+  } catch (error) {
+    showAlert({
+      type: "error",
+      message: "Could not connect to the server.",
+      position: "top-right",
+    })
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -63,7 +100,9 @@ const handleLogin = async () => {
           </router-link>
         </div>
 
-        <button @click="handleLogin" class="primary-btn">Sign In</button>
+        <button @click="handleLogin" class="primary-btn" :disabled="isLoading">
+          {{ isLoading ? "Signing in..." : "Sign In" }}
+        </button>
 
         <p class="register-text">
           Don't have an Account?

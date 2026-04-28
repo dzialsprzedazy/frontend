@@ -1,22 +1,120 @@
 <script setup>
-import { ref } from "vue"
+import { ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
-
-const adminName = ref("Dominik")
-const adminEmail = ref("admin@kwiatek.com")
 
 const router = useRouter()
 const { showAlert } = useAlerts()
 
+const adminName = ref("")
+const adminSurname = ref("")
+const adminEmail = ref("")
+const role = ref("Administrator")
+const phoneNumber = ref("")
+
+const isEditing = ref(false)
+const isLoading = ref(false)
+
+const API_URL = "http://localhost:5238/api/users"
+
+const getToken = () => localStorage.getItem("token")
+
+const loadUserDetails = async () => {
+  const token = getToken()
+
+  if (!token) {
+    router.push("/login")
+    return
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to load user details")
+    }
+
+    const data = await response.json()
+
+    adminName.value = data.imie || ""
+    adminSurname.value = data.nazwisko || ""
+    adminEmail.value = data.email || ""
+    phoneNumber.value = data.telefon || ""
+    role.value = data.role || "Administrator"
+  } catch (error) {
+    showAlert({
+      type: "error",
+      message: "Could not load user details.",
+      position: "top-right",
+    })
+  }
+}
+
+const saveUserDetails = async () => {
+  const token = getToken()
+
+  if (!token) {
+    router.push("/login")
+    return
+  }
+
+  try {
+    isLoading.value = true
+
+    const response = await fetch(`${API_URL}/details`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        imie: adminName.value,
+        nazwisko: adminSurname.value,
+        numerTelefonu: phoneNumber.value,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to update details")
+    }
+
+    showAlert({
+      type: "success",
+      message: "Details updated successfully.",
+      position: "top-right",
+    })
+
+    isEditing.value = false
+    await loadUserDetails()
+  } catch (error) {
+    showAlert({
+      type: "error",
+      message: "Could not update details.",
+      position: "top-right",
+    })
+  } finally {
+    isLoading.value = false
+  }
+}
+
 const handleLogout = () => {
+  localStorage.removeItem("token")
+  localStorage.removeItem("user")
+
   showAlert({
     type: "success",
-    message: "Admin successfully logged out.",
+    message: "Successfully logged out.",
     position: "top-right",
   })
+
   router.push("/login")
 }
+
+onMounted(loadUserDetails)
 </script>
 
 <template>
@@ -75,28 +173,69 @@ const handleLogout = () => {
               <p class="admin-badge">Administrator</p>
               <p class="email-text">{{ adminEmail }}</p>
             </div>
-            <button class="btn-primary">Edit Details</button>
+            <button
+              v-if="!isEditing"
+              class="btn-primary"
+              @click="isEditing = true"
+            >
+              Edit Details
+            </button>
+
+            <button
+              v-else
+              class="btn-primary"
+              @click="saveUserDetails"
+              :disabled="isLoading"
+            >
+              {{ isLoading ? "Saving..." : "Save Details" }}
+            </button>
           </div>
 
           <div class="details-section">
             <h3 class="section-title">Administrative Information</h3>
             <div class="details-grid">
-              <div class="detail-group">
-                <span class="detail-label">First Name</span>
-                <span class="detail-value">{{ adminName }}</span>
-              </div>
-              <div class="detail-group">
-                <span class="detail-label">Last Name</span>
-                <span class="detail-value">Kwiatek</span>
-              </div>
-              <div class="detail-group">
-                <span class="detail-label">Admin Email</span>
-                <span class="detail-value">{{ adminEmail }}</span>
-              </div>
-              <div class="detail-group">
-                <span class="detail-label">Access Level</span>
-                <span class="detail-value">Super Admin</span>
-              </div>
+            <div class="detail-group">
+              <span class="detail-label">First Name</span>
+              <input
+                v-if="isEditing"
+                class="detail-input"
+                v-model="adminName"
+                placeholder="Enter first name"
+              />
+              <span v-else class="detail-value">{{ adminName || "Not set" }}</span>
+            </div>
+
+            <div class="detail-group">
+              <span class="detail-label">Last Name</span>
+              <input
+                v-if="isEditing"
+                class="detail-input"
+                v-model="adminSurname"
+                placeholder="Enter last name"
+              />
+              <span v-else class="detail-value">{{ adminSurname || "Not set" }}</span>
+            </div>
+
+            <div class="detail-group">
+              <span class="detail-label">Admin Email</span>
+              <span class="detail-value">{{ adminEmail }}</span>
+            </div>
+
+            <div class="detail-group">
+              <span class="detail-label">Phone Number</span>
+              <input
+                v-if="isEditing"
+                class="detail-input"
+                v-model="phoneNumber"
+                placeholder="Enter phone number"
+              />
+              <span v-else class="detail-value">{{ phoneNumber || "Not set" }}</span>
+            </div>
+
+            <div class="detail-group">
+              <span class="detail-label">Role</span>
+              <span class="detail-value">{{ role }}</span>
+            </div>
             </div>
           </div>
 
@@ -412,5 +551,24 @@ const handleLogout = () => {
     align-items: flex-start;
     gap: 1.5rem;
   }
+
+  .detail-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background-color: #fafafc;
+  border: 1px solid #e1e1e8;
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  color: #150e24;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.detail-input:focus {
+  background-color: #ffffff;
+  border-color: #3f509e;
+  box-shadow: 0 0 0 4px rgba(63, 80, 158, 0.1);
+}
 }
 </style>
