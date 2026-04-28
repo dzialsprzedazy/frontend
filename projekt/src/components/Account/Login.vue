@@ -1,6 +1,5 @@
 <template>
   <div class="pageWrapper">
-    
     <div class="headerBanner">
       <div class="container">
         <h1 class="headerTitle">Login</h1>
@@ -14,45 +13,64 @@
       <div class="formBox">
         <h2 class="formTitle">Login</h2>
         <p class="formSubtitle">Please login using account detail bellow.</p>
-        
-        <input type="email" class="formInput" placeholder="Email Address" v-model="emailData" />
-        <input type="password" class="formInput" placeholder="Password" v-model="passwordData" />
-        
+
+        <input
+          type="email"
+          class="formInput"
+          placeholder="Email Address"
+          v-model="emailData"
+        />
+        <input
+          type="password"
+          class="formInput"
+          placeholder="Password"
+          v-model="passwordData"
+        />
+
         <p class="forgotPasswordText">
-          <router-link to="/forgot-password" class="forgotPasswordLink">Forgot your password?</router-link>
+          <router-link to="/forgot-password" class="forgotPasswordLink"
+            >Forgot your password?</router-link
+          >
         </p>
 
         <button @click="handleLogin" class="btnPink">Sign In</button>
-        
+
         <p class="registerText">
-          Don't have an Account? 
-          <router-link to="/register" class="registerLink">Register here</router-link>
+          Don't have an Account?
+          <router-link to="/register" class="registerLink"
+            >Register here</router-link
+          >
         </p>
       </div>
     </div>
-    
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref } from "vue"
+import { useRouter } from "vue-router"
 
-const emailData = ref("");
-const passwordData = ref("");
-const router = useRouter();
+import { useAlerts } from "../alerts/useAlerts"
+const alerts = useAlerts()
+
+const emailData = ref("")
+const passwordData = ref("")
+const router = useRouter()
 
 const handleLogin = async () => {
   if (!emailData.value || !passwordData.value) {
-    alert("Please enter both email and password.");
-    return;
+    alert("Please enter both email and password.")
+    return
   }
 
   // Symulacja logowania
-  console.log("Dane do wysłania na endpoint logowania:", { email: emailData.value, password: passwordData.value });
-  alert("Login successful! Redirecting to your profile.");
-  router.push('/profile'); // Przekierowanie do nowej strony profilu
-};
+  console.log("Dane do wysłania na endpoint logowania:", {
+    email: emailData.value,
+    password: passwordData.value,
+  })
+  alerts.success("Login successful! Redirecting to your profile 🎉")
+  router.push("/profile") // Przekierowanie do nowej strony profilu
+}
 </script>
 
 <style scoped>
