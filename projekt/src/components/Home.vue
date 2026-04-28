@@ -232,7 +232,6 @@ onMounted(() => {
   font-weight: 800;
 }
 
-/* --- STYLE DLA KOMUNIKATÓW (ŁADOWANIE) --- */
 .status-message.loading {
   text-align: center;
   font-size: 1.2rem;
