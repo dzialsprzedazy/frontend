@@ -7,7 +7,6 @@ import Footer from "@/components/Footer.vue"
 <template>
   <Top />
   <ResetPassword />
-  <Footer />
 </template>
 
 <style scoped></style>

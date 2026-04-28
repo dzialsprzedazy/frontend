@@ -1,61 +1,13 @@
-<template>
-  <div class="pageWrapper">
-    <div class="headerBanner">
-      <div class="container">
-        <h1 class="headerTitle">Login</h1>
-        <p class="breadcrumbs">
-          Home . Pages . <span class="activePage">Login</span>
-        </p>
-      </div>
-    </div>
-
-    <div class="mainContent">
-      <div class="formBox">
-        <h2 class="formTitle">Login</h2>
-        <p class="formSubtitle">Please login using account detail bellow.</p>
-
-        <input
-          type="email"
-          class="formInput"
-          placeholder="Email Address"
-          v-model="emailData"
-        />
-        <input
-          type="password"
-          class="formInput"
-          placeholder="Password"
-          v-model="passwordData"
-        />
-
-        <p class="forgotPasswordText">
-          <router-link to="/forgot-password" class="forgotPasswordLink"
-            >Forgot your password?</router-link
-          >
-        </p>
-
-        <button @click="handleLogin" class="btnPink">Sign In</button>
-
-        <p class="registerText">
-          Don't have an Account?
-          <router-link to="/register" class="registerLink"
-            >Register here</router-link
-          >
-        </p>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref } from "vue"
 import { useRouter } from "vue-router"
-
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+
 const { showAlert } = useAlerts()
+const router = useRouter()
 
 const emailData = ref("")
 const passwordData = ref("")
-const router = useRouter()
 
 const handleLogin = async () => {
   if (!emailData.value || !passwordData.value) {
@@ -63,158 +15,206 @@ const handleLogin = async () => {
     return
   }
 
-  // Symulacja logowania
-  console.log("Dane do wysłania na endpoint logowania:", {
+  console.log("Data to send to the login endpoint:", {
     email: emailData.value,
     password: passwordData.value,
   })
 
-  
   showAlert({
-    type: 'success',
-    message: 'Pomyślnie zalogowano!',
-    position: 'top-right'
+    type: "success",
+    message: "Successfully logged in!",
+    position: "top-right",
   })
-  
+
   router.push("/profile")
 }
 </script>
 
+<template>
+  <main class="auth-page">
+    <div class="auth-layout container">
+      <div class="form-card">
+        <h2 class="form-title">Sign In</h2>
+        <p class="form-subtitle">
+          Please login using your account details below.
+        </p>
+
+        <div class="input-wrapper">
+          <input
+            type="email"
+            class="custom-input"
+            placeholder="Email Address"
+            v-model="emailData"
+          />
+        </div>
+
+        <div class="input-wrapper">
+          <input
+            type="password"
+            class="custom-input"
+            placeholder="Password"
+            v-model="passwordData"
+          />
+        </div>
+
+        <div class="forgot-password-wrap">
+          <router-link to="/forgot-password" class="text-link">
+            Forgot your password?
+          </router-link>
+        </div>
+
+        <button @click="handleLogin" class="primary-btn">Sign In</button>
+
+        <p class="register-text">
+          Don't have an Account?
+          <router-link to="/register" class="text-link strong-link">
+            Register here
+          </router-link>
+        </p>
+      </div>
+    </div>
+  </main>
+</template>
+
 <style scoped>
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-.pageWrapper {
-  font-family: sans-serif;
-  background-color: #ffffff;
-}
-
-.headerBanner {
-  background-color: #f6f5ff;
-  padding: 80px 0;
-  width: 100%;
+.auth-page {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #fbfbfe;
+  color: #150e24;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
 }
 
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
+  width: 100%;
+  max-width: 1280px;
 }
 
-.headerTitle {
-  color: #101750;
-  font-size: 36px;
-  font-weight: 800;
-  margin-bottom: 10px;
-}
-
-.breadcrumbs {
-  color: #000000;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.activePage {
-  color: #fb2e86;
-}
-
-.mainContent {
+.auth-layout {
   display: flex;
   justify-content: center;
-  padding: 100px 20px;
+  align-items: center;
+  width: 100%;
 }
 
-.formBox {
-  background-color: #ffffff;
-  padding: 50px;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+.form-card {
+  background: #ffffff;
+  padding: 3.5rem;
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(21, 24, 117, 0.06);
+  border: 1px solid rgba(234, 232, 245, 0.8);
   width: 100%;
   max-width: 480px;
   text-align: center;
-  border-radius: 3px;
 }
 
-.formTitle {
-  font-size: 32px;
-  font-weight: 800;
-  color: #000000;
-  margin-bottom: 10px;
+.form-title {
+  color: #151875;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.5px;
 }
 
-.formSubtitle {
-  color: #9096b2;
-  font-size: 15px;
-  margin-bottom: 35px;
+.form-subtitle {
+  color: #8a8fb9;
+  font-size: 0.95rem;
+  margin-bottom: 2.5rem;
 }
 
-.formInput {
+.input-wrapper {
+  margin-bottom: 1.2rem;
+}
+
+.custom-input {
   width: 100%;
-  padding: 15px;
-  margin-bottom: 20px;
-  border: 1px solid #c2c5d1;
-  border-radius: 3px;
+  padding: 1rem 1.2rem;
+  background-color: #fafafc;
+  border: 1px solid #e1e1e8;
+  border-radius: 8px;
   outline: none;
-  font-size: 15px;
-  color: #9096b2;
+  font-family: inherit;
+  color: #150e24;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
 }
 
-.formInput::placeholder {
-  color: #c2c5d1;
+.custom-input::placeholder {
+  color: #a0a4c0;
+  font-weight: 400;
 }
 
-.forgotPasswordText {
+.custom-input:focus {
+  background-color: #ffffff;
+  border-color: #3f509e;
+  box-shadow: 0 0 0 4px rgba(63, 80, 158, 0.1);
+}
+
+.forgot-password-wrap {
   text-align: right;
-  margin-top: -10px;
-  margin-bottom: 20px;
+  margin-top: -0.2rem;
+  margin-bottom: 2.5rem;
 }
 
-.forgotPasswordLink {
-  color: #9096b2;
-  text-decoration: underline;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.3s;
+.text-link {
+  color: #8a8fb9;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s ease;
 }
 
-.forgotPasswordLink:hover {
-  color: #fb2e86;
+.text-link:hover {
+  color: #3f509e;
 }
 
-.btnPink {
-  background-color: #fb2e86;
+.primary-btn {
+  background-color: #3f509e;
   color: #ffffff;
-  width: 100%;
-  padding: 15px;
   border: none;
-  border-radius: 3px;
-  font-size: 16px;
-  font-weight: bold;
+  width: 100%;
+  padding: 1.1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.btnPink:hover {
-  background-color: #f9285f;
+.primary-btn:hover {
+  background-color: #2e3b75;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(46, 59, 117, 0.2);
 }
 
-.registerText {
-  margin-top: 25px;
-  color: #9096b2;
-  font-size: 15px;
+.register-text {
+  margin-top: 2.5rem;
+  color: #4a405c;
+  font-size: 0.95rem;
 }
 
-.registerLink {
-  color: #9096b2;
-  text-decoration: underline;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.3s;
+.strong-link {
+  color: #3f509e;
+  font-weight: 600;
 }
 
-.registerLink:hover {
-  color: #fb2e86;
+.strong-link:hover {
+  color: #2e3b75;
+}
+
+@media (max-width: 650px) {
+  .auth-page {
+    padding: 1rem;
+  }
+
+  .form-card {
+    padding: 2.5rem 1.5rem;
+  }
 }
 </style>

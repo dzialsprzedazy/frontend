@@ -4,28 +4,22 @@ import { createApp } from "vue"
 import App from "./App.vue"
 import router from "./router"
 
-import { createNotivue } from 'notivue'
-import 'notivue/notification.css'
-import 'notivue/animations.css'
+import { createNotivue } from "notivue"
+import "notivue/notification.css"
+import "notivue/animations.css"
 
 const app = createApp(App)
 
 const notivue = createNotivue({
-  position: 'top-right',
-  limit: Infinity,          
-  pauseOnHover: true,        
-  pauseOnTabChange: true,    
+  position: "top-right",
+  limit: Infinity,
+  pauseOnHover: true,
+  pauseOnTabChange: true,
   notifications: {
-    success: {
-      duration: 5000       
-    },
-    error: {
-      duration: Infinity    
-    },
     global: {
-      duration: 4000 
-    }
-  }
+      duration: 6000,
+    },
+  },
 })
 
 app.use(router)

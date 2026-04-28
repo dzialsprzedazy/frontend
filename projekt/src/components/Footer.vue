@@ -7,25 +7,10 @@
         <div class="footer-grid">
           <div class="footer-col brand-col">
             <a href="#" class="logo">Shop Kotika</a>
-            <form class="subscribe-form">
-              <input type="email" placeholder="Enter Email Address" />
-              <button type="submit">Sign Up</button>
-            </form>
             <div class="contact-info">
               <p>Contact Info</p>
               <p>17 Princess Road, London, Greater London NW1 8JR, UK</p>
             </div>
-          </div>
-
-          <div class="footer-col">
-            <h3>Catagories</h3>
-            <ul>
-              <li><a href="#">Laptops & Computers</a></li>
-              <li><a href="#">Cameras & Photography</a></li>
-              <li><a href="#">Smart Phones & Tablets</a></li>
-              <li><a href="#">Video Games & Consoles</a></li>
-              <li><a href="#">Waterproof Headphones</a></li>
-            </ul>
           </div>
 
           <div class="footer-col">
@@ -52,7 +37,7 @@
 
     <div class="footer-bottom">
       <div class="container bottom-content">
-        <p>© Webecy - All Rights Reserved</p>
+        <p>© Shop Kotika - All Rights Reserved</p>
         <div class="social-links">
           <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
           <a href="#"><i class="fa-brands fa-instagram"></i></a>
