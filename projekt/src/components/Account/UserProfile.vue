@@ -41,14 +41,6 @@ const handleLogout = () => {
               <span class="menu-text">Order History</span>
             </li>
             <li>
-              <span class="icon">🏷️</span>
-              <span class="menu-text">Special Offers</span>
-            </li>
-            <li>
-              <span class="icon">👤</span>
-              <span class="menu-text">Account Details</span>
-            </li>
-            <li>
               <span class="icon">📍</span>
               <span class="menu-text">Saved Addresses</span>
             </li>
