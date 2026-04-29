@@ -18,6 +18,87 @@ const originalData = ref({})
 const isEditing = ref(false)
 const isLoading = ref(false)
 
+const activeTab = ref("dashboard")
+
+const addresses = ref([])
+const showAddressForm = ref(false)
+const isEditingAddress = ref(false)
+const currentAddressId = ref(null)
+
+const newAddress = ref({
+  miasto: "",
+  ulica: "",
+  numerBudynku: "",
+  numerLokalu: "",
+  kodPocztowy: ""
+})
+
+const loadAddresses = async () => {
+  try {
+    const response = await api.get("users/addresses")
+    addresses.value = response.data
+  } catch (error) {
+    showAlert({ type: "error", message: "Failed to load addresses." })
+  }
+}
+
+const openAddAddress = () => {
+  isEditingAddress.value = false
+  currentAddressId.value = null
+  newAddress.value = { miasto: "", ulica: "", numerBudynku: "", numerLokalu: "", kodPocztowy: "" }
+  showAddressForm.value = true
+}
+
+const openEditAddress = (addr) => {
+  isEditingAddress.value = true
+  currentAddressId.value = addr.idAdresu
+  // Kopiujemy dane do formularza
+  newAddress.value = {
+    miasto: addr.miasto,
+    ulica: addr.ulica,
+    numerBudynku: addr.numerBudynku,
+    numerLokalu: addr.numerLokalu,
+    kodPocztowy: addr.kodPocztowy
+  }
+  showAddressForm.value = true
+}
+
+const saveAddress = async () => {
+  try {
+    isLoading.value = true
+    if (isEditingAddress.value) {
+      await api.put(`users/addresses/${currentAddressId.value}`, newAddress.value)
+      showAlert({ type: "success", message: "Address updated successfully!" })
+    } else {
+      await api.post("users/addresses", newAddress.value)
+      showAlert({ type: "success", message: "Address added successfully!" })
+    }
+    showAddressForm.value = false
+    await loadAddresses()
+  } catch (error) {
+    showAlert({ type: "error", message: "Error saving address." })
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const deleteAddress = async (id) => {
+  if (!confirm("Are you sure you want to delete this address?")) return
+  
+  try {
+    await api.delete(`users/addresses/${id}`)
+    showAlert({ type: "success", message: "Address deleted." })
+    await loadAddresses()
+  } catch (error) {
+    showAlert({ type: "error", message: "Could not delete address." })
+  }
+}
+
+const setActiveTab = (tab) => {
+  activeTab.value = tab
+  if (tab === 'addresses') loadAddresses()
+}
+
 const loadUserDetails = async () => {
   try {
     const response = await api.get("users/me")
@@ -151,7 +232,7 @@ onMounted(loadUserDetails)
         <h1 class="header-title">My Account</h1>
         <p class="breadcrumbs">
           Home <span class="dot-separator">•</span>
-          <span class="active-page">Dashboard</span>
+          <span class="active-page">{{ activeTab === 'dashboard' ? 'Dashboard' : 'Saved Addresses' }}</span>
         </p>
       </div>
     </div>
@@ -160,7 +241,7 @@ onMounted(loadUserDetails)
       <aside class="sidebar">
         <div class="sidebar-card">
           <ul class="menu-list">
-            <li class="active">
+            <li :class="{ active: activeTab === 'dashboard' }" @click="setActiveTab('dashboard')">
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
             </li>
@@ -168,7 +249,7 @@ onMounted(loadUserDetails)
               <span class="icon">📦</span>
               <span class="menu-text">Order History</span>
             </li>
-            <li>
+            <li :class="{ active: activeTab === 'addresses' }" @click="setActiveTab('addresses')">
               <span class="icon">📍</span>
               <span class="menu-text">Saved Addresses</span>
             </li>
@@ -182,7 +263,7 @@ onMounted(loadUserDetails)
       </aside>
 
       <main class="content-area">
-        <div class="dashboard-card">
+        <div v-if="activeTab === 'dashboard'" class="dashboard-card">
           <div class="profile-header">
             <div class="profile-avatar">
               {{ (userName.charAt(0) || 'U').toUpperCase() }}
@@ -193,27 +274,15 @@ onMounted(loadUserDetails)
               <p>{{ userEmail }}</p>
             </div>
 
-            <button
-              v-if="!isEditing"
-              class="btn-primary"
-              @click="startEditing"
-            >
+            <button v-if="!isEditing" class="btn-primary" @click="startEditing">
               Edit Profile
             </button>
 
             <div v-else class="action-buttons">
-              <button
-                class="btn-outline"
-                @click="discardChanges"
-                :disabled="isLoading"
-              >
+              <button class="btn-outline" @click="discardChanges" :disabled="isLoading">
                 Discard
               </button>
-              <button
-                class="btn-primary"
-                @click="saveUserDetails"
-                :disabled="isLoading"
-              >
+              <button class="btn-primary" @click="saveUserDetails" :disabled="isLoading">
                 {{ isLoading ? "Saving..." : "Save" }}
               </button>
             </div>
@@ -221,85 +290,125 @@ onMounted(loadUserDetails)
 
           <div class="details-section">
             <h3 class="section-title">Personal Information</h3>
-
             <div class="details-grid">
               <div class="detail-group">
                 <span class="detail-label">First Name</span>
-
-                <input
-                  v-if="isEditing"
-                  class="detail-input"
-                  v-model="userName"
-                  placeholder="Enter first name"
-                />
+                <input v-if="isEditing" class="detail-input" v-model="userName" />
                 <span v-else class="detail-value">{{ userName || 'Not provided' }}</span>
               </div>
-
               <div class="detail-group">
                 <span class="detail-label">Last Name</span>
-
-                <input
-                  v-if="isEditing"
-                  class="detail-input"
-                  v-model="userSurname"
-                  placeholder="Enter last name"
-                />
+                <input v-if="isEditing" class="detail-input" v-model="userSurname" />
                 <span v-else class="detail-value">{{ userSurname || 'Not provided' }}</span>
               </div>
-
               <div class="detail-group">
                 <span class="detail-label">Email Address</span>
                 <span class="detail-value">{{ userEmail }}</span>
               </div>
-
               <div class="detail-group">
                 <span class="detail-label">Phone Number</span>
-
-                <input
-                  v-if="isEditing"
-                  class="detail-input"
-                  v-model="phoneNumber"
-                  placeholder="Enter phone number"
-                />
+                <input v-if="isEditing" class="detail-input" v-model="phoneNumber" />
                 <span v-else class="detail-value">{{ phoneNumber || 'Not provided' }}</span>
               </div>
             </div>
           </div>
 
           <div class="security-section">
-          <h3 class="section-title">Security</h3>
-          
-          <div v-if="!isChangingPassword" class="security-flex">
-            <div class="security-info">
-              <span class="detail-label">Password</span>
-              <span class="detail-value">••••••••••••</span>
+            <h3 class="section-title">Security</h3>
+            <div v-if="!isChangingPassword" class="security-flex">
+              <div class="security-info">
+                <span class="detail-label">Password</span>
+                <span class="detail-value">••••••••••••</span>
+              </div>
+              <button class="btn-outline" @click="isChangingPassword = true">Change Password</button>
             </div>
-            <button class="btn-outline" @click="isChangingPassword = true">Change Password</button>
-          </div>
 
-          <div v-else class="password-form-card">
-            <div class="details-grid">
-              <div class="detail-group">
-                <span class="detail-label">Old Password</span>
-                <input type="password" class="detail-input" v-model="passwordData.currentPassword" />
+            <div v-else class="password-form-card">
+              <div class="details-grid">
+                <div class="detail-group">
+                  <span class="detail-label">Old Password</span>
+                  <input type="password" class="detail-input" v-model="passwordData.currentPassword" />
+                </div>
+                <div class="detail-group">
+                  <span class="detail-label">New Password</span>
+                  <input type="password" class="detail-input" v-model="passwordData.newPassword" />
+                </div>
+                <div class="detail-group">
+                  <span class="detail-label">Confirm New Password</span>
+                  <input type="password" class="detail-input" v-model="passwordData.confirmPassword" />
+                </div>
               </div>
-              <div class="detail-group">
-                <span class="detail-label">New Password</span>
-                <input type="password" class="detail-input" v-model="passwordData.newPassword" />
+              <div class="action-buttons" style="margin-top: 1rem;">
+                <button class="btn-outline" @click="isChangingPassword = false">Cancel</button>
+                <button class="btn-primary" @click="changePassword" :disabled="isLoading">
+                  {{ isLoading ? "Updating..." : "Update Password" }}
+                </button>
               </div>
-              <div class="detail-group">
-                <span class="detail-label">Confirm New Password</span>
-                <input type="password" class="detail-input" v-model="passwordData.confirmPassword" />
-              </div>
-            </div>
-            <div class="action-buttons" style="margin-top: 1rem;">
-              <button class="btn-outline" @click="isChangingPassword = false">Cancel</button>
-              <button class="btn-primary" @click="changePassword" :disabled="isLoading">
-                {{ isLoading ? "Updating..." : "Update Password" }}
-              </button>
             </div>
           </div>
         </div>
+
+        <div v-else-if="activeTab === 'addresses'" class="dashboard-card">
+          <div class="profile-header">
+            <div class="profile-title">
+              <h2>Your Saved Addresses</h2>
+              <p>Manage your delivery information</p>
+            </div>
+            <button class="btn-primary" @click="showAddressForm ? showAddressForm = false : openAddAddress()">
+              {{ showAddressForm ? 'Cancel' : 'Add New Address' }}
+            </button>
+          </div>
+
+          <div v-if="!showAddressForm" class="details-section">
+            <div v-if="addresses.length > 0" class="details-grid">
+              <div v-for="addr in addresses" :key="addr.idAdresu" class="security-flex" style="justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="address-info">
+                  <p class="detail-value"><strong>{{ addr.ulica }} {{ addr.numerBudynku }}{{ addr.numerLokalu ? '/' + addr.numerLokalu : '' }}</strong></p>
+                  <p class="detail-label" style="text-transform: none; margin: 0;">{{ addr.kodPocztowy }} {{ addr.miasto }}</p>
+                </div>
+                <div class="action-buttons">
+                  <button class="btn-outline" @click="openEditAddress(addr)" style="padding: 0.5rem 1rem;">Edit</button>
+                  <button class="btn-outline" @click="deleteAddress(addr.idAdresu)" style="padding: 0.5rem 1rem; color: #fb2e86; border-color: #fdf2f6;">Delete</button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="empty-state" style="text-align: center; padding: 3rem;">
+              <span style="font-size: 3rem; display: block; margin-bottom: 1rem;">📍</span>
+              <p class="detail-label">No addresses saved yet.</p>
+            </div>
+          </div>
+
+          <div v-else class="password-form-card">
+            <h3 class="section-title">{{ isEditingAddress ? 'Edit Address' : 'New Address' }}</h3>
+            <div class="details-grid">
+              <div class="detail-group">
+                <span class="detail-label">City</span>
+                <input class="detail-input" v-model="newAddress.miasto" placeholder="e.g. Warsaw" />
+              </div>
+              <div class="detail-group">
+                <span class="detail-label">Street</span>
+                <input class="detail-input" v-model="newAddress.ulica" placeholder="e.g. Kwiatowa" />
+              </div>
+              <div class="detail-group">
+                <span class="detail-label">Building No.</span>
+                <input class="detail-input" v-model="newAddress.numerBudynku" placeholder="e.g. 12" />
+              </div>
+              <div class="detail-group">
+                <span class="detail-label">Apartment No.</span>
+                <input class="detail-input" v-model="newAddress.numerLokalu" placeholder="Optional" />
+              </div>
+              <div class="detail-group">
+                <span class="detail-label">Zip Code</span>
+                <input class="detail-input" v-model="newAddress.kodPocztowy" placeholder="00-000" />
+              </div>
+            </div>
+            <div class="action-buttons" style="margin-top: 1.5rem;">
+              <button class="btn-outline" @click="showAddressForm = false">Cancel</button>
+              <button class="btn-primary" @click="saveAddress" :disabled="isLoading">
+                {{ isLoading ? "Saving..." : (isEditingAddress ? "Update Address" : "Save Address") }}
+              </button>
+            </div>
+          </div>
         </div>
       </main>
     </div>
