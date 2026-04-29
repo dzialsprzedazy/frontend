@@ -1,3 +1,26 @@
+<script setup>
+import { ref, onMounted, watch } from "vue"
+import { useRoute } from "vue-router"
+
+const isLoggedIn = ref(false)
+const route = useRoute()
+
+const checkLoginStatus = () => {
+  isLoggedIn.value = !!localStorage.getItem("token")
+}
+
+onMounted(() => {
+  checkLoginStatus()
+})
+
+watch(
+  () => route.path,
+  () => {
+    checkLoginStatus()
+  }
+)
+</script>
+
 <template>
   <header class="header">
     <div class="top-bar">
@@ -43,9 +66,13 @@
         </div>
 
         <div class="user-actions">
-          <router-link to="/login" class="action-link"
-            >Login <i class="fa-regular fa-user"></i
-          ></router-link>
+          <router-link
+            :to="isLoggedIn ? '/profile' : '/login'"
+            class="action-link"
+          >
+            {{ isLoggedIn ? 'Account' : 'Login' }}
+            <i class="fa-regular fa-user"></i>
+          </router-link>
           <a href="#" class="action-link"
             >Wishlist <i class="fa-regular fa-heart"></i
           ></a>
