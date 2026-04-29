@@ -1,19 +1,97 @@
 <script setup>
-import { ref } from "vue"
+import { ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
-
-const userName = ref("Dominik")
-const userEmail = ref("dominik.kwiatek@gmail.com")
+import api from "@/services/axios.js"
 
 const router = useRouter()
 const { showAlert } = useAlerts()
+
+const userName = ref("")
+const userSurname = ref("")
+const userEmail = ref("")
+const phoneNumber = ref("")
+
+const originalData = ref({})
+
+const isEditing = ref(false)
+const isLoading = ref(false)
+
+const loadUserDetails = async () => {
+  try {
+    const response = await api.get("users/me")
+    const data = response.data
+
+    userName.value = data.imie || ""
+    userSurname.value = data.nazwisko || ""
+    userEmail.value = data.email || ""
+    phoneNumber.value = data.telefon || ""
+  } catch (error) {
+    if (error.response?.status === 401) {
+      router.push("/login")
+      return
+    }
+
+    showAlert({
+      type: "error",
+      message: "Could not load user details.",
+      position: "top-right",
+    })
+  }
+}
+
+const startEditing = () => {
+  originalData.value = {
+    userName: userName.value,
+    userSurname: userSurname.value,
+    phoneNumber: phoneNumber.value,
+  }
+  isEditing.value = true
+}
+
+const discardChanges = () => {
+  userName.value = originalData.value.userName
+  userSurname.value = originalData.value.userSurname
+  phoneNumber.value = originalData.value.phoneNumber
+  isEditing.value = false
+}
+
+const saveUserDetails = async () => {
+  try {
+    isLoading.value = true
+
+    await api.put("users/details", {
+      imie: userName.value,
+      nazwisko: userSurname.value,
+      numerTelefonu: phoneNumber.value,
+    })
+
+    showAlert({
+      type: "success",
+      message: "Details updated successfully.",
+      position: "top-right",
+    })
+
+    isEditing.value = false
+    await loadUserDetails()
+  } catch (error) {
+    showAlert({
+      type: "error",
+      message: "Could not update details.",
+      position: "top-right",
+    })
+  } finally {
+    isLoading.value = false
+  }
+}
 
 const handleLogout = () => {
   localStorage.removeItem("token")
   localStorage.removeItem("user")
   router.push("/login")
 }
+
+onMounted(loadUserDetails)
 </script>
 
 <template>
@@ -57,33 +135,83 @@ const handleLogout = () => {
         <div class="dashboard-card">
           <div class="profile-header">
             <div class="profile-avatar">
-              {{ userName.charAt(0) }}
+              {{ (userName.charAt(0) || 'U').toUpperCase() }}
             </div>
+
             <div class="profile-title">
-              <h2>{{ userName }}</h2>
+              <h2>{{ userName || 'User' }} {{ userSurname }}</h2>
               <p>{{ userEmail }}</p>
             </div>
-            <button class="btn-primary">Edit Profile</button>
+
+            <button
+              v-if="!isEditing"
+              class="btn-primary"
+              @click="startEditing"
+            >
+              Edit Profile
+            </button>
+
+            <div v-else class="action-buttons">
+              <button
+                class="btn-outline"
+                @click="discardChanges"
+                :disabled="isLoading"
+              >
+                Discard
+              </button>
+              <button
+                class="btn-primary"
+                @click="saveUserDetails"
+                :disabled="isLoading"
+              >
+                {{ isLoading ? "Saving..." : "Save" }}
+              </button>
+            </div>
           </div>
 
           <div class="details-section">
             <h3 class="section-title">Personal Information</h3>
+
             <div class="details-grid">
               <div class="detail-group">
                 <span class="detail-label">First Name</span>
-                <span class="detail-value">{{ userName }}</span>
+
+                <input
+                  v-if="isEditing"
+                  class="detail-input"
+                  v-model="userName"
+                  placeholder="Enter first name"
+                />
+                <span v-else class="detail-value">{{ userName || 'Not provided' }}</span>
               </div>
+
               <div class="detail-group">
                 <span class="detail-label">Last Name</span>
-                <span class="detail-value">Kwiatek</span>
+
+                <input
+                  v-if="isEditing"
+                  class="detail-input"
+                  v-model="userSurname"
+                  placeholder="Enter last name"
+                />
+                <span v-else class="detail-value">{{ userSurname || 'Not provided' }}</span>
               </div>
+
               <div class="detail-group">
                 <span class="detail-label">Email Address</span>
                 <span class="detail-value">{{ userEmail }}</span>
               </div>
+
               <div class="detail-group">
                 <span class="detail-label">Phone Number</span>
-                <span class="detail-value">+48 123 456 789</span>
+
+                <input
+                  v-if="isEditing"
+                  class="detail-input"
+                  v-model="phoneNumber"
+                  placeholder="Enter phone number"
+                />
+                <span v-else class="detail-value">{{ phoneNumber || 'Not provided' }}</span>
               </div>
             </div>
           </div>
@@ -287,6 +415,11 @@ const handleLogout = () => {
   transition: all 0.2s ease;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
 .btn-primary:hover {
   background-color: #2e3b75;
   transform: translateY(-2px);
@@ -324,6 +457,25 @@ const handleLogout = () => {
   font-size: 1.1rem;
   color: #150e24;
   font-weight: 500;
+}
+
+.detail-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background-color: #fafafc;
+  border: 1px solid #e1e1e8;
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  color: #150e24;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.detail-input:focus {
+  background-color: #ffffff;
+  border-color: #3f509e;
+  box-shadow: 0 0 0 4px rgba(63, 80, 158, 0.1);
 }
 
 .security-flex {
