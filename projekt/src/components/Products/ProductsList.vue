@@ -31,6 +31,7 @@ const loadData = async () => {
 
     categories.value = categoriesResponse.data
     products.value = productsResponse.data
+    console.log("Fetched products:", products.value)
 
     const uniqueTags = new Map()
     products.value.forEach((product) => {
@@ -54,14 +55,14 @@ const filteredProducts = computed(() => {
   let result = products.value.filter((product) => {
     if (selectedCategories.value.length > 0) {
       const hasCategory = product.kategorie.some((c) =>
-          selectedCategories.value.includes(c.idKategorii),
+        selectedCategories.value.includes(c.idKategorii),
       )
       if (!hasCategory) return false
     }
 
     if (selectedTags.value.length > 0) {
       const hasTag = product.tagi.some((t) =>
-          selectedTags.value.includes(t.idTagu),
+        selectedTags.value.includes(t.idTagu),
       )
       if (!hasTag) return false
     }
@@ -76,7 +77,7 @@ const filteredProducts = computed(() => {
 
     if (authorQuery.value.trim() !== "") {
       const fullName =
-          `${product.autorImie} ${product.autorNazwisko}`.toLowerCase()
+        `${product.autorImie} ${product.autorNazwisko}`.toLowerCase()
       if (!fullName.includes(authorQuery.value.toLowerCase().trim()))
         return false
     }
@@ -125,9 +126,9 @@ onMounted(() => {
     </div>
 
     <ErrorCard
-        v-else-if="fetchError"
-        :message="fetchError.message"
-        @retry="loadData"
+      v-else-if="fetchError"
+      :message="fetchError.message"
+      @retry="loadData"
     />
 
     <div v-else class="shop-layout container">
@@ -136,14 +137,14 @@ onMounted(() => {
           <h3 class="filter-title">Categories</h3>
           <div class="filter-options">
             <label
-                class="custom-checkbox"
-                v-for="cat in categories"
-                :key="cat.idKategorii"
+              class="custom-checkbox"
+              v-for="cat in categories"
+              :key="cat.idKategorii"
             >
               <input
-                  type="checkbox"
-                  :value="cat.idKategorii"
-                  v-model="selectedCategories"
+                type="checkbox"
+                :value="cat.idKategorii"
+                v-model="selectedCategories"
               />
               <span class="checkmark"></span>
               <span class="label-text">{{ cat.nazwaKategorii }}</span>
@@ -155,14 +156,14 @@ onMounted(() => {
           <h3 class="filter-title">Tags</h3>
           <div class="filter-options">
             <label
-                class="custom-checkbox"
-                v-for="tag in tags"
-                :key="tag.idTagu"
+              class="custom-checkbox"
+              v-for="tag in tags"
+              :key="tag.idTagu"
             >
               <input
-                  type="checkbox"
-                  :value="tag.idTagu"
-                  v-model="selectedTags"
+                type="checkbox"
+                :value="tag.idTagu"
+                v-model="selectedTags"
               />
               <span class="checkmark"></span>
               <span class="label-text">{{ tag.nazwaTagu }}</span>
@@ -176,22 +177,22 @@ onMounted(() => {
             <div class="input-wrapper">
               <span class="currency">PLN</span>
               <input
-                  type="number"
-                  placeholder="Min"
-                  v-model="priceMin"
-                  class="filter-input"
-                  min="0"
+                type="number"
+                placeholder="Min"
+                v-model="priceMin"
+                class="filter-input"
+                min="0"
               />
             </div>
             <span class="price-separator">-</span>
             <div class="input-wrapper">
               <span class="currency">PLN</span>
               <input
-                  type="number"
-                  placeholder="Max"
-                  v-model="priceMax"
-                  class="filter-input"
-                  min="0"
+                type="number"
+                placeholder="Max"
+                v-model="priceMax"
+                class="filter-input"
+                min="0"
               />
             </div>
           </div>
@@ -202,10 +203,10 @@ onMounted(() => {
           <div class="search-wrapper">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
             <input
-                type="text"
-                placeholder="Search author..."
-                v-model="authorQuery"
-                class="filter-input full-width with-icon"
+              type="text"
+              placeholder="Search author..."
+              v-model="authorQuery"
+              class="filter-input full-width with-icon"
             />
           </div>
         </div>
@@ -219,8 +220,8 @@ onMounted(() => {
           <h3>No products match your criteria</h3>
           <p>Try clearing some filters or searching for something else.</p>
           <button
-              class="clear-filters-btn"
-              @click="
+            class="clear-filters-btn"
+            @click="
               () => {
                 selectedCategories = []
                 selectedTags = []
@@ -235,12 +236,15 @@ onMounted(() => {
         </div>
 
         <div
-            class="product-card"
-            v-for="item in filteredProducts"
-            :key="item.idProduktu"
+          class="product-card"
+          v-for="item in filteredProducts"
+          :key="item.idProduktu"
         >
           <div class="product-image-box">
-              <router-link :to="`/products/${item.idProduktu}`" class="image-link">
+            <router-link
+              :to="`/products/${item.idProduktu}`"
+              class="image-link"
+            >
               <i class="fa-regular fa-image"></i>
             </router-link>
           </div>
@@ -249,7 +253,10 @@ onMounted(() => {
             <div class="product-header">
               <div class="title-wrap">
                 <h2 class="product-name">
-                  <router-link :to="`/products/${item.idProduktu}`" class="product-title-link">
+                  <router-link
+                    :to="`/products/${item.idProduktu}`"
+                    class="product-title-link"
+                  >
                     {{ item.nazwaProduktu }}
                   </router-link>
                 </h2>
@@ -258,13 +265,13 @@ onMounted(() => {
                   <strong>{{ item.autorImie }} {{ item.autorNazwisko }}</strong>
                   <span class="dot-separator" v-if="item.dataWydania">•</span>
                   <span class="publish-date" v-if="item.dataWydania">{{
-                      item.dataWydania
-                    }}</span>
+                    item.dataWydania
+                  }}</span>
                 </p>
               </div>
               <div class="price-wrap">
                 <span class="current-price"
-                >{{ item.cena.toFixed(2) }} <small>PLN</small></span
+                  >{{ item.cena.toFixed(2) }} <small>PLN</small></span
                 >
               </div>
             </div>
@@ -278,8 +285,8 @@ onMounted(() => {
             <p class="product-description">
               {{
                 item.opis
-                    ? item.opis
-                    : "Experience the magic of this incredible piece. Detailed description coming soon, but we promise it's worth it."
+                  ? item.opis
+                  : "Experience the magic of this incredible piece. Detailed description coming soon, but we promise it's worth it."
               }}
             </p>
 
@@ -584,8 +591,9 @@ onMounted(() => {
   border-radius: 16px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   overflow: hidden;
-  transition: box-shadow 0.3s ease,
-  transform 0.3s ease;
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
   border: 1px solid #eae8f5;
   padding: 1.5rem;
   gap: 2rem;
@@ -707,8 +715,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  transition: background-color 0.2s ease,
-  transform 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .cart-btn:hover {
@@ -741,13 +750,13 @@ onMounted(() => {
 }
 
 .product-title-link {
-  text-decoration: none; 
-  color: inherit;        
+  text-decoration: none;
+  color: inherit;
   transition: color 0.2s ease;
 }
 
 .product-title-link:hover {
-  color: #7d4cd4;     
+  color: #7d4cd4;
 }
 
 .image-link {

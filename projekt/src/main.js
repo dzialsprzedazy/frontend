@@ -17,7 +17,7 @@ const notivue = createNotivue({
   pauseOnTabChange: true,
   notifications: {
     global: {
-      duration: 6000,
+      duration: 5000,
     },
   },
 })

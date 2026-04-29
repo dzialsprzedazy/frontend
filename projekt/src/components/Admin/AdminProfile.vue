@@ -1,7 +1,12 @@
 <script setup>
 import { ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
+
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+
+import { handleErrors } from "../../../errors/ErrorHandler.js"
+import ErrorCard from "../../../errors/ErrorCard.vue"
+
 import api from "@/services/axios.js"
 
 const router = useRouter()
@@ -15,8 +20,12 @@ const phoneNumber = ref("")
 
 const isEditing = ref(false)
 const isLoading = ref(false)
+const fetchError = ref(null)
 
 const loadUserDetails = async () => {
+  isLoading.value = true
+  fetchError.value = null
+
   try {
     const response = await api.get("users/me")
     const data = response.data
@@ -27,18 +36,15 @@ const loadUserDetails = async () => {
     phoneNumber.value = data.telefon || ""
     role.value = data.role || "Administrator"
   } catch (error) {
-    console.error("Load user details error:", error)
-
-    if (error.response?.status === 401) {
-      router.push("/login")
-      return
+    if (typeof handleErrors === "function") {
+      handleErrors(error, fetchError)
+    } else {
+      fetchError.value = {
+        message: "Could not load user details. Please try again.",
+      }
     }
-
-    showAlert({
-      type: "error",
-      message: "Could not load user details.",
-      position: "top-right",
-    })
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -61,8 +67,6 @@ const saveUserDetails = async () => {
     isEditing.value = false
     await loadUserDetails()
   } catch (error) {
-    console.error("Update user details error:", error)
-
     showAlert({
       type: "error",
       message: "Could not update details.",
@@ -93,7 +97,7 @@ onMounted(loadUserDetails)
   <div class="page-wrapper">
     <div class="header-banner">
       <div class="container">
-        <h1 class="header-title">Admin Dashboard</h1>
+        <h1 class="header-title">Admin Panel</h1>
         <p class="breadcrumbs">
           Home <span class="dot-separator">•</span>
           <span class="active-page">Admin Dashboard</span>
@@ -105,7 +109,7 @@ onMounted(loadUserDetails)
       <aside class="sidebar">
         <div class="sidebar-card">
           <ul class="menu-list">
-            <li class="active">
+            <li class="active" @click="router.push('/admin')">
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
             </li>
@@ -113,7 +117,7 @@ onMounted(loadUserDetails)
               <span class="icon">📦</span>
               <span class="menu-text">Order Management</span>
             </li>
-            <li>
+            <li @click="router.push('/admin/product-management')">
               <span class="icon">🛍️</span>
               <span class="menu-text">Product Management</span>
             </li>
@@ -121,9 +125,9 @@ onMounted(loadUserDetails)
               <span class="icon">👥</span>
               <span class="menu-text">User Management</span>
             </li>
-            <li>
-              <span class="icon">👤</span>
-              <span class="menu-text">Admin Details</span>
+            <li @click="router.push('/admin/discount-codes')">
+              <span class="icon">🏷️</span>
+              <span class="menu-text">Discount Codes</span>
             </li>
             <li class="divider"></li>
             <li @click="handleLogout" class="logout-item">
@@ -135,13 +139,23 @@ onMounted(loadUserDetails)
       </aside>
 
       <main class="content-area">
-        <div class="dashboard-card">
+        <ErrorCard
+          v-if="fetchError"
+          :message="fetchError.message"
+          @retry="loadUserDetails"
+        />
+
+        <div v-else class="dashboard-card">
+          <div v-if="isLoading && !isEditing" class="loading-overlay">
+            <i class="fa-solid fa-spinner fa-spin"></i> Loading data...
+          </div>
+
           <div class="profile-header">
             <div class="profile-avatar">
-              {{ adminName.charAt(0) }}
+              {{ adminName.charAt(0) || "A" }}
             </div>
             <div class="profile-title">
-              <h2>{{ adminName }}</h2>
+              <h2>{{ adminName }} {{ adminSurname }}</h2>
               <p class="admin-badge">Administrator</p>
               <p class="email-text">{{ adminEmail }}</p>
             </div>
@@ -150,7 +164,8 @@ onMounted(loadUserDetails)
               class="btn-primary"
               @click="isEditing = true"
             >
-              Edit Details
+              <i class="fa-solid fa-pen" style="margin-right: 6px"></i> Edit
+              Details
             </button>
 
             <button
@@ -159,55 +174,81 @@ onMounted(loadUserDetails)
               @click="saveUserDetails"
               :disabled="isLoading"
             >
+              <i v-if="isLoading" class="fa-solid fa-spinner fa-spin"></i>
+              <i v-else class="fa-solid fa-check"></i>
               {{ isLoading ? "Saving..." : "Save Details" }}
             </button>
           </div>
 
-          <div class="details-section">
+          <div
+            class="details-section"
+            :class="{ 'is-editing-mode': isEditing }"
+          >
             <h3 class="section-title">Administrative Information</h3>
             <div class="details-grid">
-            <div class="detail-group">
-              <span class="detail-label">First Name</span>
-              <input
-                v-if="isEditing"
-                class="detail-input"
-                v-model="adminName"
-                placeholder="Enter first name"
-              />
-              <span v-else class="detail-value">{{ adminName || "Not set" }}</span>
-            </div>
+              <div class="detail-group">
+                <span class="detail-label">First Name</span>
+                <input
+                  v-if="isEditing"
+                  class="detail-input"
+                  v-model="adminName"
+                  placeholder="Enter first name"
+                />
+                <span v-else class="detail-value">{{
+                  adminName || "Not set"
+                }}</span>
+              </div>
 
-            <div class="detail-group">
-              <span class="detail-label">Last Name</span>
-              <input
-                v-if="isEditing"
-                class="detail-input"
-                v-model="adminSurname"
-                placeholder="Enter last name"
-              />
-              <span v-else class="detail-value">{{ adminSurname || "Not set" }}</span>
-            </div>
+              <div class="detail-group">
+                <span class="detail-label">Last Name</span>
+                <input
+                  v-if="isEditing"
+                  class="detail-input"
+                  v-model="adminSurname"
+                  placeholder="Enter last name"
+                />
+                <span v-else class="detail-value">{{
+                  adminSurname || "Not set"
+                }}</span>
+              </div>
 
-            <div class="detail-group">
-              <span class="detail-label">Admin Email</span>
-              <span class="detail-value">{{ adminEmail }}</span>
-            </div>
+              <div class="detail-group">
+                <span class="detail-label">Admin Email</span>
+                <input
+                  v-if="isEditing"
+                  class="detail-input input-disabled"
+                  v-model="adminEmail"
+                  disabled
+                  title="Email cannot be changed here"
+                />
+                <span v-else class="detail-value">{{
+                  adminEmail || "Not set"
+                }}</span>
+              </div>
 
-            <div class="detail-group">
-              <span class="detail-label">Phone Number</span>
-              <input
-                v-if="isEditing"
-                class="detail-input"
-                v-model="phoneNumber"
-                placeholder="Enter phone number"
-              />
-              <span v-else class="detail-value">{{ phoneNumber || "Not set" }}</span>
-            </div>
+              <div class="detail-group">
+                <span class="detail-label">Phone Number</span>
+                <input
+                  v-if="isEditing"
+                  class="detail-input"
+                  v-model="phoneNumber"
+                  placeholder="Enter phone number"
+                />
+                <span v-else class="detail-value">{{
+                  phoneNumber || "Not set"
+                }}</span>
+              </div>
 
-            <div class="detail-group">
-              <span class="detail-label">Role</span>
-              <span class="detail-value">{{ role }}</span>
-            </div>
+              <div class="detail-group">
+                <span class="detail-label">Role</span>
+                <input
+                  v-if="isEditing"
+                  class="detail-input input-disabled"
+                  v-model="role"
+                  disabled
+                />
+                <span v-else class="detail-value">{{ role }}</span>
+              </div>
             </div>
           </div>
 
@@ -279,6 +320,21 @@ onMounted(loadUserDetails)
   grid-template-columns: 280px 1fr;
   gap: 2.5rem;
   align-items: start;
+}
+
+.content-area {
+  animation: fadeSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .sidebar-card {
@@ -356,6 +412,24 @@ onMounted(loadUserDetails)
   padding: 2.5rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
   border: 1px solid #eae8f5;
+  position: relative;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 16px;
+  z-index: 10;
+  font-size: 1.2rem;
+  color: #3f509e;
+  font-weight: 600;
 }
 
 .profile-header {
@@ -421,11 +495,20 @@ onMounted(loadUserDetails)
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: #2e3b75;
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(63, 80, 158, 0.2);
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .section-title {
@@ -435,16 +518,30 @@ onMounted(loadUserDetails)
   margin: 0 0 1.5rem 0;
 }
 
+.details-section {
+  transition: all 0.3s ease;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+}
+
+.details-section.is-editing-mode {
+  background-color: #fbfbfe;
+  border: 1px dashed #d5ccf8;
+}
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 2rem;
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
 }
 
 .detail-group {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  min-height: 70px;
 }
 
 .detail-label {
@@ -453,13 +550,51 @@ onMounted(loadUserDetails)
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.6rem;
 }
 
 .detail-value {
   font-size: 1.1rem;
   color: #150e24;
   font-weight: 500;
+  padding: 0.8rem 0;
+}
+
+.detail-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background-color: #ffffff;
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  color: #150e24;
+  font-weight: 500;
+  font-size: 1.05rem;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.detail-input:hover:not(:disabled) {
+  border-color: #b5b8cf;
+}
+
+.detail-input:focus {
+  background-color: #ffffff;
+  border-color: #3f509e;
+  box-shadow: 0 0 0 4px rgba(63, 80, 158, 0.15);
+}
+
+.detail-input::placeholder {
+  color: #c4c7d6;
+  font-weight: 400;
+}
+
+.detail-input.input-disabled {
+  background-color: #f6f5ff;
+  color: #8a8fb9;
+  border-color: #eae8f5;
+  cursor: not-allowed;
 }
 
 .security-flex {
@@ -523,24 +658,5 @@ onMounted(loadUserDetails)
     align-items: flex-start;
     gap: 1.5rem;
   }
-
-  .detail-input {
-  width: 100%;
-  padding: 0.8rem 1rem;
-  background-color: #fafafc;
-  border: 1px solid #e1e1e8;
-  border-radius: 8px;
-  outline: none;
-  font-family: inherit;
-  color: #150e24;
-  font-weight: 500;
-  font-size: 1rem;
-}
-
-.detail-input:focus {
-  background-color: #ffffff;
-  border-color: #3f509e;
-  box-shadow: 0 0 0 4px rgba(63, 80, 158, 0.1);
-}
 }
 </style>
