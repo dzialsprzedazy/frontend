@@ -3,6 +3,7 @@ import { ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 import api from "@/services/axios.js"
+import { is } from "date-fns/locale"
 
 const router = useRouter()
 const { showAlert } = useAlerts()
@@ -90,6 +91,55 @@ const handleLogout = () => {
   localStorage.removeItem("user")
   router.push("/login")
 }
+
+
+const isChangingPassword = ref(false)
+const passwordData = ref({
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+})
+
+const changePassword = async () => {
+  if (passwordData.value.newPassword !== passwordData.value.confirmPassword) {
+    showAlert({
+      type: "error",
+      message: "New passwords do not match.",
+      position: "top-right",
+    })
+    return
+  }
+
+  try {
+      isLoading.value = true
+      await api.post("users/change-password", {
+        currentPassword: passwordData.value.currentPassword,
+        newPassword: passwordData.value.newPassword,
+      })
+  
+      showAlert({
+        type: "success",
+        message: "Password changed successfully.",
+        position: "top-right",
+      })
+
+      isChangingPassword.value = false
+        passwordData.value = {
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+    }}catch (error) {
+      const errorMessage = error.response?.data?.message || "Could not change password."
+      showAlert({
+        type: "error",
+        message: errorMessage,
+        position: "top-right",
+      })
+    } finally {
+      isLoading.value = false
+
+}}
+
 
 onMounted(loadUserDetails)
 </script>
@@ -217,15 +267,39 @@ onMounted(loadUserDetails)
           </div>
 
           <div class="security-section">
-            <h3 class="section-title">Security</h3>
-            <div class="security-flex">
-              <div class="security-info">
-                <span class="detail-label">Password</span>
-                <span class="detail-value">••••••••••••</span>
+          <h3 class="section-title">Security</h3>
+          
+          <div v-if="!isChangingPassword" class="security-flex">
+            <div class="security-info">
+              <span class="detail-label">Password</span>
+              <span class="detail-value">••••••••••••</span>
+            </div>
+            <button class="btn-outline" @click="isChangingPassword = true">Change Password</button>
+          </div>
+
+          <div v-else class="password-form-card">
+            <div class="details-grid">
+              <div class="detail-group">
+                <span class="detail-label">Old Password</span>
+                <input type="password" class="detail-input" v-model="passwordData.currentPassword" />
               </div>
-              <button class="btn-outline">Change Password</button>
+              <div class="detail-group">
+                <span class="detail-label">New Password</span>
+                <input type="password" class="detail-input" v-model="passwordData.newPassword" />
+              </div>
+              <div class="detail-group">
+                <span class="detail-label">Confirm New Password</span>
+                <input type="password" class="detail-input" v-model="passwordData.confirmPassword" />
+              </div>
+            </div>
+            <div class="action-buttons" style="margin-top: 1rem;">
+              <button class="btn-outline" @click="isChangingPassword = false">Cancel</button>
+              <button class="btn-primary" @click="changePassword" :disabled="isLoading">
+                {{ isLoading ? "Updating..." : "Update Password" }}
+              </button>
             </div>
           </div>
+        </div>
         </div>
       </main>
     </div>
@@ -491,6 +565,13 @@ onMounted(loadUserDetails)
 .security-info {
   display: flex;
   flex-direction: column;
+}
+
+.password-form-card {
+  background-color: #fbfbfe;
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid #eae8f5;
 }
 
 .btn-outline {
