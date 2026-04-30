@@ -141,8 +141,7 @@ const handleSubmit = async () => {
     !formData.value.nazwaProduktu ||
     !formData.value.idAutora ||
     !selectedCategoryId.value ||
-    !formData.value.dataWydania ||
-    !imageFile.value
+    !formData.value.dataWydania
   ) {
     showAlert({
       type: "error",
@@ -154,6 +153,8 @@ const handleSubmit = async () => {
 
   try {
     isSubmitting.value = true
+
+    // Tworzymy payload bez zdjęcia
     const payload = {
       ...formData.value,
       idAutora: Number(formData.value.idAutora),
@@ -162,7 +163,8 @@ const handleSubmit = async () => {
       kategorieIds: [selectedCategoryId.value],
     }
 
-    console.log("Payload:", payload)
+    // Wysłanie danych do API
+    await api.post("products", payload)
 
     showAlert({
       type: "success",
@@ -170,11 +172,15 @@ const handleSubmit = async () => {
       position: "top-right",
     })
 
+    // Odświeżenie listy w rodzicu
+    emit("product-added")
     handleClose()
   } catch (error) {
     showAlert({
       type: "error",
-      message: "An error occurred while adding the product.",
+      message:
+        error.response?.data?.message ||
+        "An error occurred while adding the product.",
       position: "top-right",
     })
   } finally {
@@ -271,7 +277,7 @@ const handleSubmit = async () => {
             </div>
 
             <div class="form-group full-width">
-              <label>Product Image <span class="required">*</span></label>
+              <label>Product Image (Disabled currently)</label>
               <div
                 class="image-dropzone"
                 :class="{

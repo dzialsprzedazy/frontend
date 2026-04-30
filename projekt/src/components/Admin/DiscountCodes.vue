@@ -167,7 +167,7 @@ onMounted(loadUsers)
               <span class="icon">🛍️</span>
               <span class="menu-text">Product Management</span>
             </li>
-            <li>
+            <li @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>
               <span class="menu-text">User Management</span>
             </li>

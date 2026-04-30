@@ -22,10 +22,13 @@ const selectedCategory = ref("All")
 const showImportModal = ref(false)
 const showAddModal = ref(false)
 
-// CSV Import State
+const showDeleteModal = ref(false)
+const productToDelete = ref(null)
+
 const csvFile = ref(null)
 const isDragging = ref(false)
 const fileInput = ref(null)
+const isUploading = ref(false) // New state for import button
 
 const loadProducts = async () => {
   isLoading.value = true
@@ -44,6 +47,38 @@ const loadProducts = async () => {
     }
   } finally {
     isLoading.value = false
+  }
+}
+
+const confirmDelete = (id) => {
+  productToDelete.value = id
+  showDeleteModal.value = true
+}
+
+const closeDeleteModal = () => {
+  showDeleteModal.value = false
+  productToDelete.value = null
+}
+
+const executeDelete = async () => {
+  if (!productToDelete.value) return
+
+  try {
+    await api.delete(`products/${productToDelete.value}`)
+    showAlert({
+      type: "success",
+      message: "Product deleted successfully.",
+      position: "top-right",
+    })
+    await loadProducts()
+  } catch (error) {
+    showAlert({
+      type: "error",
+      message: "Failed to delete product.",
+      position: "top-right",
+    })
+  } finally {
+    closeDeleteModal()
   }
 }
 
@@ -83,7 +118,6 @@ const filteredProducts = computed(() => {
   })
 })
 
-// Funkcje pomocnicze dla UI
 const getCategoryClass = (product) => {
   const cat = product.kategorie?.[0]?.nazwaKategorii.toLowerCase() || ""
   if (cat.includes("muzyka") || cat.includes("music")) return "cat-music"
@@ -102,7 +136,6 @@ const getIcon = (product) => {
   return "fa-solid fa-box-archive"
 }
 
-// CSV loading functions
 const triggerFileInput = () => fileInput.value.click()
 
 const handleFileDrop = (event) => {
@@ -135,14 +168,47 @@ const closeImportModal = () => {
   setTimeout(() => removeFile(), 300)
 }
 
-const uploadCsv = () => {
+const uploadCsv = async () => {
   if (!csvFile.value) return
-  showAlert({
-    type: "success",
-    message: `File "${csvFile.value.name}" has been successfully imported!`,
-    position: "top-right",
-  })
-  closeImportModal()
+
+  isUploading.value = true
+
+  const formData = new FormData()
+  formData.append("file", csvFile.value)
+
+  try {
+    const response = await api.post("products/csv", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    })
+
+    showAlert({
+      type: "success",
+      message: "File imported successfully.",
+      position: "top-right",
+    })
+
+    closeImportModal()
+    await loadProducts()
+  } catch (error) {
+    let errorMessage = "An error occurred while importing the file."
+
+    if (error.response) {
+      errorMessage =
+        error.response.data.message || `Server error: ${error.response.status}`
+    } else if (error.request) {
+      errorMessage = "No connection to the server. Please check your internet."
+    }
+
+    showAlert({
+      type: "error",
+      message: errorMessage,
+      position: "top-right",
+    })
+  } finally {
+    isUploading.value = false
+  }
 }
 
 const removeFile = () => {
@@ -190,11 +256,14 @@ onMounted(loadProducts)
               <span class="icon">📦</span>
               <span class="menu-text">Order Management</span>
             </li>
-            <li class="active">
+            <li
+              class="active"
+              @click="router.push('/admin/product-management')"
+            >
               <span class="icon">🛍️</span>
               <span class="menu-text">Product Management</span>
             </li>
-            <li>
+            <li @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>
               <span class="menu-text">User Management</span>
             </li>
@@ -311,7 +380,11 @@ onMounted(loadProducts)
                   <button class="icon-btn edit" title="Edit">
                     <i class="fa-solid fa-pen"></i>
                   </button>
-                  <button class="icon-btn delete" title="Delete">
+                  <button
+                    class="icon-btn delete"
+                    title="Delete"
+                    @click="confirmDelete(product.idProduktu)"
+                  >
                     <i class="fa-solid fa-trash"></i>
                   </button>
                 </div>
@@ -395,8 +468,49 @@ onMounted(loadProducts)
 
           <div class="modal-footer">
             <button class="btn-text" @click="closeImportModal">Cancel</button>
-            <button class="btn-primary" @click="uploadCsv" :disabled="!csvFile">
-              <i class="fa-solid fa-check"></i> Import Data
+            <button
+              class="btn-primary"
+              @click="uploadCsv"
+              :disabled="!csvFile || isUploading"
+            >
+              <template v-if="!isUploading">
+                <i class="fa-solid fa-check"></i> Import Data
+              </template>
+              <template v-else>
+                <div class="loader-circle small"></div>
+                Sending...
+              </template>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="modal">
+      <div
+        v-if="showDeleteModal"
+        class="modal-overlay"
+        @click.self="closeDeleteModal"
+      >
+        <div class="modal-box confirm-box">
+          <div class="modal-header">
+            <h3>Delete Product</h3>
+            <button class="close-btn" @click="closeDeleteModal">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <p class="confirm-text">
+              Are you sure you want to delete this product? This action cannot
+              be undone.
+            </p>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn-text" @click="closeDeleteModal">Anuluj</button>
+            <button class="btn-primary btn-danger" @click="executeDelete">
+              <i class="fa-solid fa-trash"></i> Delete
             </button>
           </div>
         </div>
@@ -1065,6 +1179,26 @@ onMounted(loadProducts)
   opacity: 0.6;
   cursor: not-allowed;
   background-color: #8a8fb9;
+}
+
+.confirm-box {
+  max-width: 420px;
+}
+
+.confirm-text {
+  font-size: 1.05rem;
+  color: #4a405c;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.btn-danger {
+  background-color: #e03a5b !important;
+}
+
+.btn-danger:hover {
+  background-color: #c22948 !important;
+  box-shadow: 0 4px 12px rgba(224, 58, 91, 0.2) !important;
 }
 
 @media (max-width: 1024px) {
