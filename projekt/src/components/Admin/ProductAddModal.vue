@@ -154,7 +154,6 @@ const handleSubmit = async () => {
   try {
     isSubmitting.value = true
 
-    // Tworzymy payload bez zdjęcia
     const payload = {
       ...formData.value,
       idAutora: Number(formData.value.idAutora),
@@ -163,7 +162,6 @@ const handleSubmit = async () => {
       kategorieIds: [selectedCategoryId.value],
     }
 
-    // Wysłanie danych do API
     await api.post("products", payload)
 
     showAlert({
@@ -172,7 +170,6 @@ const handleSubmit = async () => {
       position: "top-right",
     })
 
-    // Odświeżenie listy w rodzicu
     emit("product-added")
     handleClose()
   } catch (error) {
