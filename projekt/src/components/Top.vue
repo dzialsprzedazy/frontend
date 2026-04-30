@@ -6,7 +6,6 @@ const searchQuery = ref("")
 const router = useRouter()
 const route = useRoute()
 
-// Waiting for changes in the URL search parameter, and updating the searchQuery accordingly. This allows the search input to reflect the current search query even when navigating back and forth between pages.
 watch(
   () => route.query.search,
   (newSearch) => {
@@ -15,19 +14,21 @@ watch(
   { immediate: true },
 )
 
-const onSearchInput = () => {
-  const query = searchQuery.value.trim()
+const handleLiveSearch = () => {
+  if (route.path === "/products") {
+    const query = searchQuery.value.trim()
+    router.replace({
+      query: { ...route.query, search: query ? query : undefined },
+    })
+  }
+}
 
+const onSearchSubmit = () => {
   if (route.path !== "/products") {
-    // If we're not on the products page, navigate there with the search query as a URL parameter
+    const query = searchQuery.value.trim()
     router.push({
       path: "/products",
       query: query ? { search: query } : {},
-    })
-  } else {
-    // If we're already on the products page, update the URL in place (without refreshing and breaking the back history)
-    router.replace({
-      query: { ...route.query, search: query ? query : undefined },
     })
   }
 }
@@ -76,9 +77,10 @@ const onSearchInput = () => {
             class="search-input"
             placeholder="Search product or author..."
             v-model="searchQuery"
-            @input="onSearchInput"
+            @input="handleLiveSearch"
+            @keyup.enter="onSearchSubmit"
           />
-          <button class="search-btn">
+          <button class="search-btn" @click="onSearchSubmit">
             <i class="fa-solid fa-magnifying-glass"></i>
           </button>
         </div>
