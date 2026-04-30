@@ -18,6 +18,7 @@ const fetchError = ref(null)
 const searchQuery = ref("")
 const selectedUsers = ref([])
 const discountCode = ref("")
+const discountPercentage = ref(10)
 
 const loadUsers = async () => {
   isLoading.value = true
@@ -25,7 +26,6 @@ const loadUsers = async () => {
 
   try {
     const response = await api.get("users")
-
     users.value = response.data.filter((user) => !user.czyUsuniety)
   } catch (error) {
     if (typeof handleErrors === "function") {
@@ -95,21 +95,36 @@ const sendDiscountCodes = () => {
     return
   }
 
+  if (
+    !discountPercentage.value ||
+    discountPercentage.value <= 0 ||
+    discountPercentage.value > 100
+  ) {
+    showAlert({
+      type: "error",
+      message: "Please enter a valid discount percentage (1-100).",
+      position: "top-right",
+    })
+    return
+  }
+
   const payload = selectedUsers.value.map((userId) => ({
     userId: userId,
     discountCode: discountCode.value.trim(),
+    discountPercentage: Number(discountPercentage.value),
   }))
 
   console.log("Sending discount codes with payload:", payload)
 
   showAlert({
     type: "success",
-    message: `Discount code sent to ${selectedUsers.value.length} user(s)!`,
+    message: `Discount code (${discountPercentage.value}%) sent to ${selectedUsers.value.length} user(s)!`,
     position: "top-right",
   })
 
   selectedUsers.value = []
   discountCode.value = ""
+  discountPercentage.value = 10
 }
 
 const handleLogout = () => {
@@ -200,25 +215,45 @@ onMounted(loadUsers)
             <h3 class="section-title">Create Discount Code</h3>
 
             <div class="code-generation-wrapper">
-              <div class="input-group">
-                <span class="icon-label">🏷️</span>
-                <input
-                  type="text"
-                  class="code-input"
-                  v-model="discountCode"
-                  placeholder="Enter code (e.g. SUMMER2026)"
-                />
+              <div class="field-group expand">
+                <div class="input-with-icon">
+                  <span class="input-icon left">🏷️</span>
+                  <input
+                    type="text"
+                    class="styled-input pl-large"
+                    v-model="discountCode"
+                    placeholder="Enter code (e.g. SUMMER2026)"
+                  />
+                </div>
+                <button class="btn-outline" @click="generateRandomCode">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Generate
+                </button>
               </div>
-              <button class="btn-outline" @click="generateRandomCode">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Generate
-              </button>
-              <button
-                class="btn-primary"
-                @click="sendDiscountCodes"
-                :disabled="!discountCode || selectedUsers.length === 0"
-              >
-                <i class="fa-regular fa-paper-plane"></i> Send to Selected
-              </button>
+
+              <div class="field-group">
+                <div class="input-with-icon small-input">
+                  <input
+                    type="number"
+                    class="styled-input pr-large text-center"
+                    v-model="discountPercentage"
+                    placeholder="10"
+                    min="1"
+                    max="100"
+                  />
+                  <span class="input-icon right">%</span>
+                </div>
+                <button
+                  class="btn-primary"
+                  @click="sendDiscountCodes"
+                  :disabled="
+                    !discountCode ||
+                    !discountPercentage ||
+                    selectedUsers.length === 0
+                  "
+                >
+                  <i class="fa-regular fa-paper-plane"></i> Send to Selected
+                </button>
+              </div>
             </div>
 
             <div class="selection-info">
@@ -487,30 +522,58 @@ onMounted(loadUsers)
 
 .code-generation-wrapper {
   display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 1.5rem;
   flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  justify-content: space-between;
 }
 
-.input-group {
+.field-group {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.field-group.expand {
+  flex: 1;
+  min-width: 350px;
+}
+
+.input-with-icon {
   position: relative;
   flex: 1;
-  min-width: 250px;
 }
 
-.icon-label {
+.input-with-icon.small-input {
+  width: 90px;
+  flex: none;
+}
+
+.input-icon {
   position: absolute;
-  left: 14px;
   top: 50%;
   transform: translateY(-50%);
+  color: #8a8fb9;
   font-size: 1.1rem;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.code-input {
+.input-icon.left {
+  left: 14px;
+}
+
+.input-icon.right {
+  right: 14px;
+  font-weight: 700;
+  color: #151875;
+}
+
+.styled-input {
   width: 100%;
-  padding: 0.8rem 1rem 0.8rem 2.8rem;
+  padding: 0.8rem 1rem;
   background-color: #ffffff;
   border: 2px solid #eae8f5;
   border-radius: 8px;
@@ -522,14 +585,37 @@ onMounted(loadUsers)
   transition: all 0.3s ease;
 }
 
-.code-input:focus {
+.styled-input:focus {
   border-color: #3f509e;
   box-shadow: 0 0 0 4px rgba(63, 80, 158, 0.1);
 }
 
-.code-input::placeholder {
+.styled-input::placeholder {
   color: #c4c7d6;
   font-weight: 500;
+}
+
+.styled-input.pl-large {
+  padding-left: 2.8rem;
+}
+
+.styled-input.pr-large {
+  padding-right: 2.4rem;
+  padding-left: 1rem;
+}
+
+.styled-input.text-center {
+  text-align: center;
+}
+
+.styled-input[type="number"]::-webkit-inner-spin-button,
+.styled-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.styled-input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 .selection-info {
@@ -815,6 +901,14 @@ onMounted(loadUsers)
   .code-generation-wrapper {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .field-group {
+    flex-wrap: wrap;
+  }
+
+  .field-group.expand {
+    min-width: 100%;
   }
 
   .list-header {

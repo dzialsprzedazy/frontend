@@ -586,6 +586,7 @@ onMounted(loadUsers)
   border-radius: 16px;
   border: 1px solid #f0f0f5;
   transition: all 0.3s;
+  position: relative;
 }
 
 .user-row-card:hover:not(.soft-deleted) {
@@ -618,17 +619,29 @@ onMounted(loadUsers)
   font-size: 1.2rem;
   border: 2px solid #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+}
+
+.name-details {
+  overflow: hidden;
 }
 
 .u-name {
   font-weight: 700;
   color: #151875;
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .u-email {
   font-size: 0.85rem;
   color: #8a8fb9;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .meta-item {
@@ -649,6 +662,7 @@ onMounted(loadUsers)
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
+  display: inline-block;
 }
 
 .badge.active {
@@ -724,6 +738,7 @@ onMounted(loadUsers)
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 1rem;
 }
 
 .modal-box {
@@ -813,6 +828,7 @@ onMounted(loadUsers)
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -841,14 +857,113 @@ onMounted(loadUsers)
   transform: scale(0.95);
 }
 
-@media (max-width: 768px) {
-  .user-row-card {
-    grid-template-columns: 1fr auto;
-    gap: 15px;
+@media (max-width: 1024px) {
+  .main-content {
+    grid-template-columns: 240px 1fr;
+    gap: 1.5rem;
   }
-  .user-meta,
+}
+
+@media (max-width: 860px) {
+  .main-content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .sidebar-card {
+    padding: 1rem;
+  }
+
+  .menu-list {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .menu-list li {
+    white-space: nowrap;
+    padding: 0.6rem 1rem;
+  }
+
+  .menu-list li:hover:not(.divider) {
+    transform: translateY(-2px);
+  }
+
+  .divider {
+    width: 1px;
+    height: auto;
+    margin: 0 0.5rem;
+  }
+
+  .modern-toolbar {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .header-actions {
+    justify-content: stretch;
+  }
+
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .header-banner {
+    padding: 2.5rem 0;
+    margin-bottom: 2rem;
+  }
+
+  .header-title {
+    font-size: 1.8rem;
+  }
+
+  .container {
+    padding: 0 1rem;
+  }
+
+  .user-row-card {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
   .user-status-tag {
-    display: none;
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+  }
+
+  .user-meta {
+    padding-top: 0.5rem;
+  }
+
+  .product-actions {
+    justify-content: flex-start;
+    border-top: 1px solid #f0f0f5;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .icon-btn {
+    width: 100%;
+  }
+
+  .filter-pills {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 400px) {
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .btn-text,
+  .btn-primary {
+    width: 100%;
   }
 }
 </style>
