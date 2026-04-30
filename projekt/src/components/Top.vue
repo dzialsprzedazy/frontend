@@ -1,3 +1,38 @@
+<script setup>
+import { ref, watch } from "vue"
+import { useRouter, useRoute } from "vue-router"
+
+const searchQuery = ref("")
+const router = useRouter()
+const route = useRoute()
+
+// Waiting for changes in the URL search parameter, and updating the searchQuery accordingly. This allows the search input to reflect the current search query even when navigating back and forth between pages.
+watch(
+  () => route.query.search,
+  (newSearch) => {
+    searchQuery.value = newSearch || ""
+  },
+  { immediate: true },
+)
+
+const onSearchInput = () => {
+  const query = searchQuery.value.trim()
+
+  if (route.path !== "/products") {
+    // If we're not on the products page, navigate there with the search query as a URL parameter
+    router.push({
+      path: "/products",
+      query: query ? { search: query } : {},
+    })
+  } else {
+    // If we're already on the products page, update the URL in place (without refreshing and breaking the back history)
+    router.replace({
+      query: { ...route.query, search: query ? query : undefined },
+    })
+  }
+}
+</script>
+
 <template>
   <header class="header">
     <div class="top-bar">
@@ -36,7 +71,13 @@
         </ul>
 
         <div class="search-container">
-          <input type="text" class="search-input" placeholder="" />
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search product or author..."
+            v-model="searchQuery"
+            @input="onSearchInput"
+          />
           <button class="search-btn">
             <i class="fa-solid fa-magnifying-glass"></i>
           </button>

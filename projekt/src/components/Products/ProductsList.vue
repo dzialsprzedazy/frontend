@@ -1,8 +1,12 @@
 <script setup>
-import { ref, onMounted, computed } from "vue"
+import { ref, onMounted, computed, watch } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
+
+const route = useRoute()
+const router = useRouter()
 
 const products = ref([])
 const categories = ref([])
@@ -15,9 +19,18 @@ const selectedCategories = ref([])
 const selectedTags = ref([])
 const priceMin = ref(null)
 const priceMax = ref(null)
-const authorQuery = ref("")
+const searchQuery = ref("")
 
 const sortBy = ref("default")
+
+// LISTENING TO THE URL ADDRESS: Works immediately after entering the page, and also when update the search in Top.vue while already on the products page.
+watch(
+  () => route.query.search,
+  (newSearch) => {
+    searchQuery.value = newSearch || ""
+  },
+  { immediate: true },
+)
 
 const loadData = async () => {
   isLoading.value = true
@@ -31,7 +44,6 @@ const loadData = async () => {
 
     categories.value = categoriesResponse.data
     products.value = productsResponse.data
-    console.log("Fetched products:", products.value)
 
     const uniqueTags = new Map()
     products.value.forEach((product) => {
@@ -49,9 +61,7 @@ const loadData = async () => {
   }
 }
 
-// --- LOGIKA FILTROWANIA ---
 const filteredProducts = computed(() => {
-  // 1. Filtrowanie
   let result = products.value.filter((product) => {
     if (selectedCategories.value.length > 0) {
       const hasCategory = product.kategorie.some((c) =>
@@ -75,17 +85,20 @@ const filteredProducts = computed(() => {
       if (product.cena > parseFloat(priceMax.value)) return false
     }
 
-    if (authorQuery.value.trim() !== "") {
+    if (searchQuery.value.trim() !== "") {
+      const query = searchQuery.value.toLowerCase().trim()
       const fullName =
         `${product.autorImie} ${product.autorNazwisko}`.toLowerCase()
-      if (!fullName.includes(authorQuery.value.toLowerCase().trim()))
+      const productName = product.nazwaProduktu.toLowerCase()
+
+      if (!fullName.includes(query) && !productName.includes(query)) {
         return false
+      }
     }
 
     return true
   })
 
-  // 2. Sortowanie wyniku
   if (sortBy.value === "price-asc") {
     result.sort((a, b) => a.cena - b.cena)
   } else if (sortBy.value === "price-desc") {
@@ -199,13 +212,19 @@ onMounted(() => {
         </div>
 
         <div class="filter-card">
-          <h3 class="filter-title">Author</h3>
+          <h3 class="filter-title">Search</h3>
           <div class="search-wrapper">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
             <input
               type="text"
-              placeholder="Search author..."
-              v-model="authorQuery"
+              placeholder="Search product or author..."
+              v-model="searchQuery"
+              @input="
+                () =>
+                  router.replace({
+                    query: { ...route.query, search: searchQuery },
+                  })
+              "
               class="filter-input full-width with-icon"
             />
           </div>
@@ -227,7 +246,8 @@ onMounted(() => {
                 selectedTags = []
                 priceMin = null
                 priceMax = null
-                authorQuery = ''
+                searchQuery = ''
+                router.replace({ query: {} })
               }
             "
           >
@@ -468,7 +488,7 @@ onMounted(() => {
   font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-weight: 700; /* Złagodzono z 800 */
+  font-weight: 700;
   margin: 0 0 1.2rem 0;
 }
 
