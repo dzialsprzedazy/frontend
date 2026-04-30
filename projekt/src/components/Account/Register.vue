@@ -10,10 +10,16 @@ const router = useRouter()
 const emailData = ref("")
 const passwordData = ref("")
 const confirmPasswordData = ref("")
+const userNameData = ref("")
 const isLoading = ref(false)
 
 const handleRegister = async () => {
-  if (!emailData.value || !passwordData.value || !confirmPasswordData.value) {
+  if (
+    !emailData.value ||
+    !passwordData.value ||
+    !confirmPasswordData.value ||
+    !userNameData.value
+  ) {
     showAlert({
       type: "error",
       message: "Please fill in all fields.",
@@ -34,6 +40,7 @@ const handleRegister = async () => {
   const payload = {
     email: emailData.value,
     password: passwordData.value,
+    userName: userNameData.value,
   }
 
   try {
@@ -52,7 +59,7 @@ const handleRegister = async () => {
     const errorData = error.response?.data
 
     const message = Array.isArray(errorData)
-      ? errorData.map(e => e.description).join(" ")
+      ? errorData.map((e) => e.description).join(" ")
       : errorData?.message || "Registration failed."
 
     showAlert({
@@ -79,6 +86,15 @@ const handleRegister = async () => {
             class="custom-input"
             placeholder="Email Address"
             v-model="emailData"
+          />
+        </div>
+
+        <div class="input-wrapper">
+          <input
+            type="text"
+            class="custom-input"
+            placeholder="Username"
+            v-model="userNameData"
           />
         </div>
 
