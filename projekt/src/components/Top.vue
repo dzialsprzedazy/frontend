@@ -1,10 +1,14 @@
 <script setup>
-import { ref, watch } from "vue"
+import { ref, watch, computed } from "vue"
 import { useRouter, useRoute } from "vue-router"
 
 const searchQuery = ref("")
 const router = useRouter()
 const route = useRoute()
+
+const isLoggedIn = computed(() => {
+  return !!localStorage.getItem("token")
+})
 
 watch(
   () => route.query.search,
