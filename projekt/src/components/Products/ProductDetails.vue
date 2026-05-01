@@ -4,14 +4,18 @@ import { useRoute } from "vue-router"
 import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
+import { useAlerts } from '@/components/alerts/useAlerts.js';
 
 const currentTab = ref("Description")
 
 const route = useRoute()
+const { showAlert } = useAlerts();
 
 const product = ref(null)
 const isLoading = ref(false)
 const fetchError = ref(null)
+const isInWishlist = ref(false);
+const isWishlistActionLoading = ref(false);
 
 const loadProduct = async (idFromRoute = null) => {
   window.scrollTo(0, 0)
@@ -20,6 +24,7 @@ const loadProduct = async (idFromRoute = null) => {
   fetchError.value = null
   product.value = null
   currentTab.value = "Description"
+  isInWishlist.value = false;
 
   try {
     const id = idFromRoute || route.params.id
@@ -27,12 +32,69 @@ const loadProduct = async (idFromRoute = null) => {
 
     const response = await api.get(`products/${id}`)
     product.value = response.data
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const wishlistResponse = await api.get('users/wishlist');
+        isInWishlist.value = wishlistResponse.data.some(item => item.productId === product.value.idProduktu);
+      } catch (wishlistError) {
+        console.warn("Could not fetch wishlist status:", wishlistError);
+        isInWishlist.value = false;
+      }
+    }
   } catch (error) {
     handleErrors(error, fetchError)
   } finally {
     isLoading.value = false
   }
 }
+
+const toggleWishlist = async () => {
+  if (!product.value || isWishlistActionLoading.value) return;
+
+  const token = localStorage.getItem('token');
+  if (!token) {
+    showAlert({
+      type: 'error',
+      message: 'Please log in to add products to your wishlist.',
+      position: 'top-right',
+    });
+    return;
+  }
+
+  isWishlistActionLoading.value = true;
+  fetchError.value = null;
+
+  try {
+    if (isInWishlist.value) {
+      await api.delete(`users/wishlist/${product.value.idProduktu}`);
+      isInWishlist.value = false;
+      showAlert({
+        type: 'success',
+        message: 'Product removed from wishlist!',
+        position: 'top-right',
+      });
+    } else {
+      await api.post(`users/wishlist/${product.value.idProduktu}`);
+      isInWishlist.value = true;
+      showAlert({
+        type: 'success',
+        message: 'Product added to wishlist!',
+        position: 'top-right',
+      });
+    }
+  } catch (error) {
+    handleErrors(error, fetchError);
+    showAlert({
+      type: 'error',
+      message: fetchError.value?.message || 'Failed to update wishlist.',
+      position: 'top-right',
+    });
+  } finally {
+    isWishlistActionLoading.value = false;
+  }
+};
 
 watch(
   () => route.params.id,
@@ -117,8 +179,13 @@ onMounted(() => {
                 <button class="cart-btn">
                   <i class="fa-solid fa-cart-shopping"></i> Add To Cart
                 </button>
-                <button class="icon-btn" title="Add to Wishlist">
-                  <i class="fa-regular fa-heart"></i>
+                <button
+                  class="icon-btn"
+                  :title="isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'"
+                  @click="toggleWishlist"
+                  :disabled="isWishlistActionLoading"
+                >
+                  <i :class="['fa-heart', isInWishlist ? 'fa-solid' : 'fa-regular']"></i>
                 </button>
               </div>
 
@@ -537,6 +604,10 @@ onMounted(() => {
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(63, 80, 158, 0.3);
 }
+.icon-btn .fa-solid.fa-heart {
+  color: #fb2e86; /* A distinct color for "filled" heart */
+}
+
 
 .icon-btn {
   width: 48px;

@@ -4,9 +4,9 @@
   <footer class="footer">
     <div class="footer-top">
       <div class="container">
-        <div class="footer-grid">
+        <div class="footer-grid"> 
           <div class="footer-col brand-col">
-            <a href="#" class="logo">Shop Kotika</a>
+            <router-link to="/" class="logo">Shop Kotika</router-link>
             <div class="contact-info">
               <p>Contact Info</p>
               <p>Stefana Banacha 22, Lodz, Poland</p>
@@ -18,7 +18,7 @@
           <div class="footer-col">
             <h3>Customer Care</h3>
             <ul>
-              <li><a href="#">My Account</a></li>
+              <li><router-link to="/profile">My Account</router-link></li>
               <li><a href="#">Discount</a></li>
               <li><a href="#">Returns</a></li>
               <li><a href="#">Orders History</a></li>
@@ -29,7 +29,7 @@
           <div class="footer-col">
             <h3>Pages</h3>
             <ul>
-              <li><a href="#">Browse the Shop</a></li>
+              <li><router-link to="/products">Browse the Shop</router-link></li>
               <li><a href="#">Category</a></li>
             </ul>
           </div>
@@ -87,7 +87,7 @@
 }
 
 .logo {
-  display: inline-block;
+  display: inline-block; 
   font-size: 28px;
   font-weight: 800;
   color: #0a0a2a;
