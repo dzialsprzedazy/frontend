@@ -1,24 +1,37 @@
 <script setup>
-import { ref, onMounted, watch } from "vue"
-import { useRoute } from "vue-router"
+import { ref, watch } from "vue"
+import { useRouter, useRoute } from "vue-router"
 
-const isLoggedIn = ref(false)
+const searchQuery = ref("")
+const router = useRouter()
 const route = useRoute()
 
-const checkLoginStatus = () => {
-  isLoggedIn.value = !!localStorage.getItem("token")
+watch(
+  () => route.query.search,
+  (newSearch) => {
+    searchQuery.value = newSearch || ""
+  },
+  { immediate: true },
+)
+
+const handleLiveSearch = () => {
+  if (route.path === "/products") {
+    const query = searchQuery.value.trim()
+    router.replace({
+      query: { ...route.query, search: query ? query : undefined },
+    })
+  }
 }
 
-onMounted(() => {
-  checkLoginStatus()
-})
-
-watch(
-  () => route.path,
-  () => {
-    checkLoginStatus()
+const onSearchSubmit = () => {
+  if (route.path !== "/products") {
+    const query = searchQuery.value.trim()
+    router.push({
+      path: "/products",
+      query: query ? { search: query } : {},
+    })
   }
-)
+}
 </script>
 
 <template>
@@ -59,8 +72,15 @@ watch(
         </ul>
 
         <div class="search-container">
-          <input type="text" class="search-input" placeholder="" />
-          <button class="search-btn">
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search product or author..."
+            v-model="searchQuery"
+            @input="handleLiveSearch"
+            @keyup.enter="onSearchSubmit"
+          />
+          <button class="search-btn" @click="onSearchSubmit">
             <i class="fa-solid fa-magnifying-glass"></i>
           </button>
         </div>

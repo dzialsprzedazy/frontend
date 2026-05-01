@@ -1,8 +1,12 @@
 <script setup>
-import { ref, onMounted, computed } from "vue"
+import { ref, onMounted, computed, watch } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
+
+const route = useRoute()
+const router = useRouter()
 
 const products = ref([])
 const categories = ref([])
@@ -15,9 +19,18 @@ const selectedCategories = ref([])
 const selectedTags = ref([])
 const priceMin = ref(null)
 const priceMax = ref(null)
-const authorQuery = ref("")
+const searchQuery = ref("")
 
 const sortBy = ref("default")
+
+// LISTENING TO THE URL ADDRESS: Works immediately after entering the page, and also when update the search in Top.vue while already on the products page.
+watch(
+  () => route.query.search,
+  (newSearch) => {
+    searchQuery.value = newSearch || ""
+  },
+  { immediate: true },
+)
 
 const loadData = async () => {
   isLoading.value = true
@@ -48,20 +61,18 @@ const loadData = async () => {
   }
 }
 
-// --- LOGIKA FILTROWANIA ---
 const filteredProducts = computed(() => {
-  // 1. Filtrowanie
   let result = products.value.filter((product) => {
     if (selectedCategories.value.length > 0) {
       const hasCategory = product.kategorie.some((c) =>
-          selectedCategories.value.includes(c.idKategorii),
+        selectedCategories.value.includes(c.idKategorii),
       )
       if (!hasCategory) return false
     }
 
     if (selectedTags.value.length > 0) {
       const hasTag = product.tagi.some((t) =>
-          selectedTags.value.includes(t.idTagu),
+        selectedTags.value.includes(t.idTagu),
       )
       if (!hasTag) return false
     }
@@ -74,17 +85,20 @@ const filteredProducts = computed(() => {
       if (product.cena > parseFloat(priceMax.value)) return false
     }
 
-    if (authorQuery.value.trim() !== "") {
+    if (searchQuery.value.trim() !== "") {
+      const query = searchQuery.value.toLowerCase().trim()
       const fullName =
-          `${product.autorImie} ${product.autorNazwisko}`.toLowerCase()
-      if (!fullName.includes(authorQuery.value.toLowerCase().trim()))
+        `${product.autorImie} ${product.autorNazwisko}`.toLowerCase()
+      const productName = product.nazwaProduktu.toLowerCase()
+
+      if (!fullName.includes(query) && !productName.includes(query)) {
         return false
+      }
     }
 
     return true
   })
 
-  // 2. Sortowanie wyniku
   if (sortBy.value === "price-asc") {
     result.sort((a, b) => a.cena - b.cena)
   } else if (sortBy.value === "price-desc") {
@@ -125,9 +139,9 @@ onMounted(() => {
     </div>
 
     <ErrorCard
-        v-else-if="fetchError"
-        :message="fetchError.message"
-        @retry="loadData"
+      v-else-if="fetchError"
+      :message="fetchError.message"
+      @retry="loadData"
     />
 
     <div v-else class="shop-layout container">
@@ -136,14 +150,14 @@ onMounted(() => {
           <h3 class="filter-title">Categories</h3>
           <div class="filter-options">
             <label
-                class="custom-checkbox"
-                v-for="cat in categories"
-                :key="cat.idKategorii"
+              class="custom-checkbox"
+              v-for="cat in categories"
+              :key="cat.idKategorii"
             >
               <input
-                  type="checkbox"
-                  :value="cat.idKategorii"
-                  v-model="selectedCategories"
+                type="checkbox"
+                :value="cat.idKategorii"
+                v-model="selectedCategories"
               />
               <span class="checkmark"></span>
               <span class="label-text">{{ cat.nazwaKategorii }}</span>
@@ -155,14 +169,14 @@ onMounted(() => {
           <h3 class="filter-title">Tags</h3>
           <div class="filter-options">
             <label
-                class="custom-checkbox"
-                v-for="tag in tags"
-                :key="tag.idTagu"
+              class="custom-checkbox"
+              v-for="tag in tags"
+              :key="tag.idTagu"
             >
               <input
-                  type="checkbox"
-                  :value="tag.idTagu"
-                  v-model="selectedTags"
+                type="checkbox"
+                :value="tag.idTagu"
+                v-model="selectedTags"
               />
               <span class="checkmark"></span>
               <span class="label-text">{{ tag.nazwaTagu }}</span>
@@ -176,36 +190,42 @@ onMounted(() => {
             <div class="input-wrapper">
               <span class="currency">PLN</span>
               <input
-                  type="number"
-                  placeholder="Min"
-                  v-model="priceMin"
-                  class="filter-input"
-                  min="0"
+                type="number"
+                placeholder="Min"
+                v-model="priceMin"
+                class="filter-input"
+                min="0"
               />
             </div>
             <span class="price-separator">-</span>
             <div class="input-wrapper">
               <span class="currency">PLN</span>
               <input
-                  type="number"
-                  placeholder="Max"
-                  v-model="priceMax"
-                  class="filter-input"
-                  min="0"
+                type="number"
+                placeholder="Max"
+                v-model="priceMax"
+                class="filter-input"
+                min="0"
               />
             </div>
           </div>
         </div>
 
         <div class="filter-card">
-          <h3 class="filter-title">Author</h3>
+          <h3 class="filter-title">Search</h3>
           <div class="search-wrapper">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
             <input
-                type="text"
-                placeholder="Search author..."
-                v-model="authorQuery"
-                class="filter-input full-width with-icon"
+              type="text"
+              placeholder="Search product or author..."
+              v-model="searchQuery"
+              @input="
+                () =>
+                  router.replace({
+                    query: { ...route.query, search: searchQuery },
+                  })
+              "
+              class="filter-input full-width with-icon"
             />
           </div>
         </div>
@@ -219,14 +239,15 @@ onMounted(() => {
           <h3>No products match your criteria</h3>
           <p>Try clearing some filters or searching for something else.</p>
           <button
-              class="clear-filters-btn"
-              @click="
+            class="clear-filters-btn"
+            @click="
               () => {
                 selectedCategories = []
                 selectedTags = []
                 priceMin = null
                 priceMax = null
-                authorQuery = ''
+                searchQuery = ''
+                router.replace({ query: {} })
               }
             "
           >
@@ -235,12 +256,15 @@ onMounted(() => {
         </div>
 
         <div
-            class="product-card"
-            v-for="item in filteredProducts"
-            :key="item.idProduktu"
+          class="product-card"
+          v-for="item in filteredProducts"
+          :key="item.idProduktu"
         >
           <div class="product-image-box">
-              <router-link :to="`/products/${item.idProduktu}`" class="image-link">
+            <router-link
+              :to="`/products/${item.idProduktu}`"
+              class="image-link"
+            >
               <i class="fa-regular fa-image"></i>
             </router-link>
           </div>
@@ -249,7 +273,10 @@ onMounted(() => {
             <div class="product-header">
               <div class="title-wrap">
                 <h2 class="product-name">
-                  <router-link :to="`/products/${item.idProduktu}`" class="product-title-link">
+                  <router-link
+                    :to="`/products/${item.idProduktu}`"
+                    class="product-title-link"
+                  >
                     {{ item.nazwaProduktu }}
                   </router-link>
                 </h2>
@@ -258,13 +285,13 @@ onMounted(() => {
                   <strong>{{ item.autorImie }} {{ item.autorNazwisko }}</strong>
                   <span class="dot-separator" v-if="item.dataWydania">•</span>
                   <span class="publish-date" v-if="item.dataWydania">{{
-                      item.dataWydania
-                    }}</span>
+                    item.dataWydania
+                  }}</span>
                 </p>
               </div>
               <div class="price-wrap">
                 <span class="current-price"
-                >{{ item.cena.toFixed(2) }} <small>PLN</small></span
+                  >{{ item.cena.toFixed(2) }} <small>PLN</small></span
                 >
               </div>
             </div>
@@ -278,8 +305,8 @@ onMounted(() => {
             <p class="product-description">
               {{
                 item.opis
-                    ? item.opis
-                    : "Experience the magic of this incredible piece. Detailed description coming soon, but we promise it's worth it."
+                  ? item.opis
+                  : "Experience the magic of this incredible piece. Detailed description coming soon, but we promise it's worth it."
               }}
             </p>
 
@@ -461,7 +488,7 @@ onMounted(() => {
   font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-weight: 700; /* Złagodzono z 800 */
+  font-weight: 700;
   margin: 0 0 1.2rem 0;
 }
 
@@ -584,8 +611,9 @@ onMounted(() => {
   border-radius: 16px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   overflow: hidden;
-  transition: box-shadow 0.3s ease,
-  transform 0.3s ease;
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
   border: 1px solid #eae8f5;
   padding: 1.5rem;
   gap: 2rem;
@@ -707,8 +735,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  transition: background-color 0.2s ease,
-  transform 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .cart-btn:hover {
@@ -741,13 +770,13 @@ onMounted(() => {
 }
 
 .product-title-link {
-  text-decoration: none; 
-  color: inherit;        
+  text-decoration: none;
+  color: inherit;
   transition: color 0.2s ease;
 }
 
 .product-title-link:hover {
-  color: #7d4cd4;     
+  color: #7d4cd4;
 }
 
 .image-link {
