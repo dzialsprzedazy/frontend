@@ -97,9 +97,10 @@ const onSearchSubmit = () => {
             {{ isLoggedIn ? 'Account' : 'Login' }}
             <i class="fa-regular fa-user"></i>
           </router-link>
-          <a href="#" class="action-link"
-            >Wishlist <i class="fa-regular fa-heart"></i
-          ></a>
+          <router-link to="/wishlist" class="action-link"
+            >Wishlist
+            <i class="fa-regular fa-heart"></i>
+          </router-link>
           <a href="#" class="cart-link"
             ><i class="fa-solid fa-cart-shopping"></i
           ></a>

@@ -78,7 +78,12 @@ const router = createRouter({
     {
       path: "/contact",
       name: "contact",
-      component: () => import("../views/ContactView.vue"),
+      component: () => import("../views/Others/ContactView.vue"),
+    },
+    {
+      path: "/wishlist",
+      name: "wishlist",
+      component: () => import("../views/Others/WishlistView.vue"),
     },
     // ERROR 404 - MUST BE AT THE END OF THE FILE!
     {

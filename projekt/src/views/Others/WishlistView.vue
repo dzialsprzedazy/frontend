@@ -1,12 +1,12 @@
 <script setup>
 import Top from "@/components/Top.vue"
-import Home from "@/components/Home.vue"
+import WishlistContent from "@/components/Others/Wishlist.vue"
 import Footer from "@/components/Footer.vue"
 </script>
 
 <template>
   <Top />
-  <Home />
+  <WishlistContent />
   <Footer />
 </template>
 
