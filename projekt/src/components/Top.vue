@@ -72,7 +72,7 @@ const onSearchSubmit = () => {
           </li>
           <li><router-link to="/products">Products</router-link></li>
           <li><a href="#">Shop</a></li>
-          <li><a href="#">Contact</a></li>
+          <li><router-link to="/contact">Contact</router-link></li>
         </ul>
 
         <div class="search-container">

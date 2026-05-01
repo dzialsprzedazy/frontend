@@ -75,6 +75,11 @@ const router = createRouter({
       component: () => import("../views/Account/ResetPasswordView.vue"),
       meta: { requiresGuest: true },
     },
+    {
+      path: "/contact",
+      name: "contact",
+      component: () => import("../views/ContactView.vue"),
+    },
     // ERROR 404 - MUST BE AT THE END OF THE FILE!
     {
       path: "/:catchAll(.*)",

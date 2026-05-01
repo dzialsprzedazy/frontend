@@ -9,7 +9,9 @@
             <a href="#" class="logo">Shop Kotika</a>
             <div class="contact-info">
               <p>Contact Info</p>
-              <p>17 Princess Road, London, Greater London NW1 8JR, UK</p>
+              <p>Stefana Banacha 22, Lodz, Poland</p>
+              <p>+48 591 182 321</p>
+              <p>shop@kotika.com</p>
             </div>
           </div>
 
