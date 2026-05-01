@@ -1,10 +1,14 @@
 <script setup>
-import { ref, watch } from "vue"
+import { ref, watch, computed } from "vue"
 import { useRouter, useRoute } from "vue-router"
 
 const searchQuery = ref("")
 const router = useRouter()
 const route = useRoute()
+
+const isLoggedIn = computed(() => {
+  return !!localStorage.getItem("token")
+})
 
 watch(
   () => route.query.search,
@@ -68,7 +72,7 @@ const onSearchSubmit = () => {
           </li>
           <li><router-link to="/products">Products</router-link></li>
           <li><a href="#">Shop</a></li>
-          <li><a href="#">Contact</a></li>
+          <li><router-link to="/contact">Contact</router-link></li>
         </ul>
 
         <div class="search-container">
@@ -86,12 +90,17 @@ const onSearchSubmit = () => {
         </div>
 
         <div class="user-actions">
-          <router-link to="/login" class="action-link"
-            >Login <i class="fa-regular fa-user"></i
-          ></router-link>
-          <a href="#" class="action-link"
-            >Wishlist <i class="fa-regular fa-heart"></i
-          ></a>
+          <router-link
+            :to="isLoggedIn ? '/profile' : '/login'"
+            class="action-link"
+          >
+            {{ isLoggedIn ? 'Account' : 'Login' }}
+            <i class="fa-regular fa-user"></i>
+          </router-link>
+          <router-link to="/wishlist" class="action-link"
+            >Wishlist
+            <i class="fa-regular fa-heart"></i>
+          </router-link>
           <a href="#" class="cart-link"
             ><i class="fa-solid fa-cart-shopping"></i
           ></a>
