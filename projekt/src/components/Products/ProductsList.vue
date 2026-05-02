@@ -4,9 +4,11 @@ import { useRoute, useRouter } from "vue-router"
 import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
+import { useAlerts } from "@/components/alerts/useAlerts.js"
 
 const route = useRoute()
 const router = useRouter()
+const { showAlert } = useAlerts()
 
 const products = ref([])
 const categories = ref([])
@@ -23,6 +25,9 @@ const searchQuery = ref("")
 
 const sortBy = ref("default")
 
+const wishlistProductIds = ref(new Set())
+const isWishlistActionLoading = ref(null)
+
 // LISTENING TO THE URL ADDRESS: Works immediately after entering the page, and also when update the search in Top.vue while already on the products page.
 watch(
   () => route.query.search,
@@ -35,6 +40,7 @@ watch(
 const loadData = async () => {
   isLoading.value = true
   fetchError.value = null
+  wishlistProductIds.value.clear()
 
   try {
     const [categoriesResponse, productsResponse] = await Promise.all([
@@ -54,10 +60,59 @@ const loadData = async () => {
       })
     })
     tags.value = Array.from(uniqueTags.values())
+
+    const token = localStorage.getItem("token")
+    if (token) {
+      try {
+        const wishlistResponse = await api.get("users/wishlist")
+        wishlistProductIds.value = new Set(
+          wishlistResponse.data.map((item) => item.productId),
+        )
+      } catch (wishlistError) {
+        console.warn(
+          "Could not fetch user wishlist on products page:",
+          wishlistError,
+        )
+      }
+    }
   } catch (error) {
     handleErrors(error, fetchError)
   } finally {
     isLoading.value = false
+  }
+}
+
+const toggleWishlist = async (product) => {
+  if (!product || isWishlistActionLoading.value) return
+
+  const token = localStorage.getItem("token")
+  if (!token) {
+    showAlert({
+      type: "error",
+      message: "Please log in to add products to your wishlist.",
+      position: "top-right",
+    })
+    return
+  }
+
+  isWishlistActionLoading.value = product.idProduktu
+
+  try {
+    const isInWishlist = wishlistProductIds.value.has(product.idProduktu)
+    if (isInWishlist) {
+      await api.delete(`users/wishlist/${product.idProduktu}`)
+      wishlistProductIds.value.delete(product.idProduktu)
+      showAlert({ type: "success", message: "Product removed from wishlist!", position: "top-right" })
+    } else {
+      await api.post(`users/wishlist/${product.idProduktu}`)
+      wishlistProductIds.value.add(product.idProduktu)
+      showAlert({ type: "success", message: "Product added to wishlist!", position: "top-right" })
+    }
+  } catch (error) {
+    const errorMsg = error.response?.data?.error || "Failed to update wishlist."
+    showAlert({ type: "error", message: errorMsg, position: "top-right" })
+  } finally {
+    isWishlistActionLoading.value = null
   }
 }
 
@@ -315,8 +370,25 @@ onMounted(() => {
                 <i class="fa-solid fa-cart-shopping"></i> Add to Cart
               </button>
               <div class="secondary-actions">
-                <button class="icon-btn" title="Add to Wishlist">
-                  <i class="fa-regular fa-heart"></i>
+                <button
+                  class="icon-btn"
+                  :title="
+                    wishlistProductIds.has(item.idProduktu)
+                      ? 'Remove from Wishlist'
+                      : 'Add to Wishlist'
+                  "
+                  @click="toggleWishlist(item)"
+                  :disabled="isWishlistActionLoading === item.idProduktu"
+                >
+                  <i
+                    :class="[
+                      'fa-heart',
+                      wishlistProductIds.has(item.idProduktu)
+                        ? 'fa-solid'
+                        : 'fa-regular',
+                    ]"
+                  >
+                  </i>
                 </button>
                 <router-link :to="`/products/${item.idProduktu}`">
                   <button class="icon-btn" title="Show the Product">
@@ -767,6 +839,10 @@ onMounted(() => {
 
 .icon-btn:hover {
   background-color: #2e3b75;
+}
+
+.icon-btn .fa-solid.fa-heart {
+  color: #fb2e86;
 }
 
 .product-title-link {

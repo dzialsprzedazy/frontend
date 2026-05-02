@@ -84,6 +84,7 @@ const router = createRouter({
       path: "/wishlist",
       name: "wishlist",
       component: () => import("../views/Others/WishlistView.vue"),
+      meta: { requiresAuth: true },
     },
     // ERROR 404 - MUST BE AT THE END OF THE FILE!
     {

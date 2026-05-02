@@ -1,12 +1,57 @@
 <script setup>
-// Tutaj możesz dodać logikę do pobierania i zarządzania elementami listy życzeń,
-// np. z API, Vuex/Pinia store, itp.
-// Na razie jest to statyczny widok z przykładowymi danymi.
+import { ref, onMounted } from 'vue';
+import api from '@/services/axios.js';
+import { handleErrors } from '../../../errors/ErrorHandler.js';
+import ErrorCard from '../../../errors/ErrorCard.vue';
+import { useAlerts } from '@/components/alerts/useAlerts.js';
+
+const wishlistItems = ref([]);
+const isLoading = ref(true);
+const fetchError = ref(null);
+const { showAlert } = useAlerts();
+
+const fetchWishlist = async () => {
+  isLoading.value = true;
+  fetchError.value = null;
+  try {
+    const response = await api.get('users/wishlist');
+    wishlistItems.value = response.data;
+  } catch (error) {
+    handleErrors(error, fetchError);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const removeFromWishlist = async (productId) => {
+  fetchError.value = null;
+  try {
+    await api.delete(`users/wishlist/${productId}`);
+    wishlistItems.value = wishlistItems.value.filter(item => item.productId !== productId);
+    
+    showAlert({
+      type: 'success',
+      message: 'Product removed from wishlist!',
+      position: 'top-right',
+    });
+    
+  } catch (error) {
+    handleErrors(error, fetchError);
+    showAlert({
+      type: 'error',
+      message: fetchError.value?.message || 'Failed to remove product from wishlist.',
+      position: 'top-right',
+    });
+    }
+};
+
+onMounted(() => {
+  fetchWishlist();
+});
 </script>
 
 <template>
   <div class="page-wrapper">
-    <!-- Charakterystyczny baner nagłówka -->
     <div class="header-banner">
       <div class="container">
         <h1 class="header-title">Your Wishlist</h1>
@@ -18,105 +63,126 @@
       </div>
     </div>
 
-    <!-- Główna zawartość strony -->
     <div class="container main-content">
-      <div class="wishlist-items-grid">
-        <!-- Przykładowy element listy życzeń 1 -->
-        <div class="product-card">
-          <div class="product-image-box">
-            <i class="fa-regular fa-image"></i>
-          </div>
-          <div class="product-card-info">
-            <div class="product-header">
-              <h3 class="product-title">Igrzyska śmierci</h3>
-              <span class="product-author">By Suzanne Collins</span>
+      <Transition name="page-fade" mode="out-in">
+        <div v-if="isLoading" class="status-message loading" key="loading">
+          <i class="fa-solid fa-spinner fa-spin"></i> Loading wishlist...
+        </div>
+
+        <ErrorCard
+          v-else-if="fetchError"
+          :message="fetchError.message"
+          @retry="fetchWishlist"
+          key="error"
+        />
+
+        <div class="wishlist-items-grid" v-else-if="wishlistItems.length > 0" key="content">
+          <div class="product-card" v-for="item in wishlistItems" :key="item.productId">
+            <div class="product-image-box">
+              <router-link :to="`/products/${item.productId}`" class="image-link">
+                <i class="fa-regular fa-image" v-if="!item.imageUrl"></i>
+                <img :src="item.imageUrl" alt="Product Image" v-else style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" />
+              </router-link>
             </div>
             
-            <div class="card-footer">
-              <p class="current-price">
-                27.53 <small>PLN</small>
-              </p>
-              <div class="action-buttons">
-                <button class="cart-btn" title="Add to Cart">
-                  <i class="fa-solid fa-cart-shopping"></i>
-                </button>
-                <button class="remove-btn" title="Remove from Wishlist">
-                  <i class="fa-solid fa-trash-can"></i>
-                </button>
+            <div class="product-card-info">
+              <div class="product-header">
+                <h3 class="product-title">
+                  <router-link :to="`/products/${item.productId}`" class="product-title-link">{{ item.nazwaProduktu }}</router-link>
+                </h3>
+                <span class="product-author">
+                  By 
+                  <strong>
+                    {{ item.autorImie }} {{ item.autorNazwisko }}
+                  </strong>
+                </span>
+              </div>
+              
+              <div class="card-footer">
+                <p class="current-price">
+                  {{ item.cena?.toFixed(2) ?? '0.00' }} <small>PLN</small>
+                </p>
+                <div class="action-buttons">
+                  <button class="cart-btn" title="Add to Cart">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                  </button>
+                  <button class="remove-btn" title="Remove from Wishlist" @click="removeFromWishlist(item.productId)">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Przykładowy element listy życzeń 2 -->
-        <div class="product-card">
-          <div class="product-image-box">
-            <i class="fa-regular fa-image"></i>
+        <div class="empty-state" v-else key="empty">
+          <div class="empty-icon-wrap">
+            <i class="fa-regular fa-heart"></i>
           </div>
-          <div class="product-card-info">
-            <div class="product-header">
-              <h3 class="product-title">W pierścieniu ognia</h3>
-              <span class="product-author">By Suzanne Collins</span>
-            </div>
-            
-            <div class="card-footer">
-              <p class="current-price">
-                28.57 <small>PLN</small>
-              </p>
-              <div class="action-buttons">
-                <button class="cart-btn" title="Add to Cart">
-                  <i class="fa-solid fa-cart-shopping"></i>
-                </button>
-                <button class="remove-btn" title="Remove from Wishlist">
-                  <i class="fa-solid fa-trash-can"></i>
-                </button>
-              </div>
-            </div>
-          </div>
+          <h3>Your wishlist is empty</h3>
+          <p>Looks like you haven't added anything yet. Start exploring our catalog!</p>
         </div>
-
-        <!-- Przykładowy element listy życzeń 3 -->
-        <div class="product-card">
-          <div class="product-image-box">
-            <i class="fa-regular fa-image"></i>
-          </div>
-          <div class="product-card-info">
-            <div class="product-header">
-              <h3 class="product-title">Kosogłos</h3>
-              <span class="product-author">By Suzanne Collins</span>
-            </div>
-            
-            <div class="card-footer">
-              <p class="current-price">
-                31.20 <small>PLN</small>
-              </p>
-              <div class="action-buttons">
-                <button class="cart-btn" title="Add to Cart">
-                  <i class="fa-solid fa-cart-shopping"></i>
-                </button>
-                <button class="remove-btn" title="Remove from Wishlist">
-                  <i class="fa-solid fa-trash-can"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Komunikat, gdy lista życzeń jest pusta -->
-      <div class="empty-state" v-if="false">
-        <div class="empty-icon-wrap">
-          <i class="fa-regular fa-heart"></i>
-        </div>
-        <h3>Your wishlist is empty</h3>
-        <p>Looks like you haven't added anything yet. Start exploring our catalog!</p>
-      </div>
+      </Transition>
     </div>
   </div>
 </template>
 
 <style scoped>
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css");
+
+.image-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-title-link {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.2s ease;
+}
+
+.product-title-link:hover {
+  color: #7d4cd4;
+}
+
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(15px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-15px);
+}
+
+.status-message.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 1.1rem;
+  color: #7d4cd4;
+  padding: 8rem 0;
+  font-weight: 600;
+}
+
+.status-message.loading i {
+  font-size: 2.2rem;
+}
 
 .page-wrapper {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -348,7 +414,6 @@
   font-size: 1rem;
 }
 
-/* Responsive Styles */
 @media (max-width: 768px) {
   .wishlist-items-grid {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
