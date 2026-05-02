@@ -21,6 +21,9 @@ const selectedStatus = ref("All")
 const showDeleteModal = ref(false)
 const userToDelete = ref(null)
 
+const showRestoreModal = ref(false)
+const userToRestore = ref(null)
+
 const loadUsers = async () => {
   isLoading.value = true
   fetchError.value = null
@@ -46,24 +49,37 @@ const confirmDelete = (id) => {
   showDeleteModal.value = true
 }
 
+const confirmRestore = (id) => {
+  userToRestore.value = id
+  showRestoreModal.value = true
+}
+
 const closeDeleteModal = () => {
   showDeleteModal.value = false
   userToDelete.value = null
+}
+
+const closeRestoreModal = () => {
+  showRestoreModal.value = false
+  userToRestore.value = null
 }
 
 const executeDelete = async () => {
   if (!userToDelete.value) return
 
   try {
-    // await api.delete(`users/${userToDelete.value}`)
+    await api.patch(`users/${userToDelete.value}/soft-delete`)
 
     showAlert({
       type: "success",
       message: "User account deactivated successfully.",
       position: "top-right",
     })
+
     await loadUsers()
   } catch (error) {
+    console.error("Soft delete user error:", error)
+
     showAlert({
       type: "error",
       message: "Failed to deactivate user account.",
@@ -71,6 +87,32 @@ const executeDelete = async () => {
     })
   } finally {
     closeDeleteModal()
+  }
+}
+
+const executeRestore = async () => {
+  if (!userToRestore.value) return
+
+  try {
+    await api.patch(`users/${userToRestore.value}/restore`)
+
+    showAlert({
+      type: "success",
+      message: "User account reactivated successfully.",
+      position: "top-right",
+    })
+
+    await loadUsers()
+  } catch (error) {
+    console.error("Restoring user error:", error)
+
+    showAlert({
+      type: "error",
+      message: "Failed to reactivate user account.",
+      position: "top-right",
+    })
+  } finally {
+    closeRestoreModal()
   }
 }
 
@@ -251,12 +293,21 @@ onMounted(loadUsers)
 
                 <div class="product-actions">
                   <button
+                    v-if="!user.czyUsuniety"
                     class="icon-btn delete"
-                    title="Delete User"
-                    :disabled="user.czyUsuniety"
+                    title="Deactivate User"
                     @click="confirmDelete(user.id)"
                   >
                     <i class="fa-solid fa-trash-can"></i>
+                  </button>
+
+                  <button
+                    v-else
+                    class="icon-btn restore"
+                    title="Restore User"
+                    @click="confirmRestore(user.id)"
+                  >
+                    <i class="fa-solid fa-rotate-left"></i>
                   </button>
                 </div>
               </div>
@@ -291,6 +342,37 @@ onMounted(loadUsers)
             <button class="btn-text" @click="closeDeleteModal">Cancel</button>
             <button class="btn-primary btn-danger" @click="executeDelete">
               <i class="fa-solid fa-user-slash"></i> Delete User
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="modal">
+      <div
+        v-if="showRestoreModal"
+        class="modal-overlay"
+        @click.self="closeRestoreModal"
+      >
+        <div class="modal-box confirm-box">
+          <div class="modal-header">
+            <h3>Restore User Account</h3>
+            <button class="close-btn" @click="closeRestoreModal">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <p class="confirm-text">
+              Are you sure you want to restore this user? This action will mark
+              the account as active in the system.
+            </p>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn-text" @click="closeRestoreModal">Cancel</button>
+            <button class="btn-primary" @click="executeRestore">
+              <i class="fa-solid fa-user"></i> Restore User
             </button>
           </div>
         </div>
@@ -949,6 +1031,11 @@ onMounted(loadUsers)
 
   .icon-btn {
     width: 100%;
+  }
+
+  .icon-btn.restore {
+    background: #e6f6f0;
+    color: #21a366;
   }
 
   .filter-pills {
