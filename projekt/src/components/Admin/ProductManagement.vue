@@ -60,6 +60,11 @@ const closeDeleteModal = () => {
   productToDelete.value = null
 }
 
+const openEditModal = (id) => {
+  productToEditId.value = id
+  showEditModal.value = true
+}
+
 const executeDelete = async () => {
   if (!productToDelete.value) return
 
@@ -387,7 +392,11 @@ onMounted(loadProducts)
                 </div>
 
                 <div class="product-actions">
-                  <button class="icon-btn edit" title="Edit">
+                  <button
+                    class="icon-btn edit"
+                    title="Edit"
+                    @click="openEditModal(product.idProduktu)"
+                  >
                     <i class="fa-solid fa-pen"></i>
                   </button>
                   <button

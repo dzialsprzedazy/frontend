@@ -22,6 +22,13 @@ const isEditing = ref(false)
 const isLoading = ref(false)
 const fetchError = ref(null)
 
+const isChangingPassword = ref(false)
+const passwordData = ref({
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+})
+
 const loadUserDetails = async () => {
   isLoading.value = true
   fetchError.value = null
@@ -70,6 +77,71 @@ const saveUserDetails = async () => {
     showAlert({
       type: "error",
       message: "Could not update details.",
+      position: "top-right",
+    })
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const changePassword = async () => {
+  if (passwordData.value.newPassword !== passwordData.value.confirmPassword) {
+    showAlert({
+      type: "error",
+      message: "New passwords do not match.",
+      position: "top-right",
+    })
+    return
+  }
+
+  try {
+    isLoading.value = true
+    await api.post("users/change-password", {
+      currentPassword: passwordData.value.currentPassword,
+      newPassword: passwordData.value.newPassword,
+    })
+
+    showAlert({
+      type: "success",
+      message: "Password changed successfully.",
+      position: "top-right",
+    })
+
+    isChangingPassword.value = false
+    passwordData.value = {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    }
+  } catch (error) {
+    let responseData = error.response?.data
+    let errorMessage = "Could not change password."
+
+    if (responseData) {
+      if (typeof responseData === "string") {
+        try {
+          responseData = JSON.parse(responseData)
+        } catch (e) {}
+      }
+
+      if (Array.isArray(responseData) && responseData.length > 0) {
+        responseData = responseData[0]
+      }
+
+      if (responseData.description) {
+        errorMessage = responseData.description
+      } else if (responseData.message) {
+        errorMessage = responseData.message
+      } else if (responseData.error) {
+        errorMessage = responseData.error
+      } else if (typeof responseData === "string") {
+        errorMessage = responseData
+      }
+    }
+
+    showAlert({
+      type: "error",
+      message: errorMessage,
       position: "top-right",
     })
   } finally {
@@ -156,7 +228,10 @@ onMounted(loadUserDetails)
         />
 
         <div v-else class="dashboard-card">
-          <div v-if="isLoading && !isEditing" class="loading-overlay">
+          <div
+            v-if="isLoading && !isEditing && !isChangingPassword"
+            class="loading-overlay"
+          >
             <i class="fa-solid fa-spinner fa-spin"></i> Loading data...
           </div>
 
@@ -264,12 +339,60 @@ onMounted(loadUserDetails)
 
           <div class="security-section">
             <h3 class="section-title">Security & Access</h3>
-            <div class="security-flex">
+            <div v-if="!isChangingPassword" class="security-flex">
               <div class="security-info">
                 <span class="detail-label">Admin Password</span>
                 <span class="detail-value">••••••••••••</span>
               </div>
-              <button class="btn-outline">Change Password</button>
+              <button class="btn-outline" @click="isChangingPassword = true">
+                Change Password
+              </button>
+            </div>
+
+            <div v-else class="password-form-card">
+              <div class="details-grid">
+                <div class="detail-group">
+                  <span class="detail-label">Current Password</span>
+                  <input
+                    type="password"
+                    class="detail-input"
+                    v-model="passwordData.currentPassword"
+                    placeholder="Enter current password"
+                  />
+                </div>
+                <div class="detail-group">
+                  <span class="detail-label">New Password</span>
+                  <input
+                    type="password"
+                    class="detail-input"
+                    v-model="passwordData.newPassword"
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div class="detail-group">
+                  <span class="detail-label">Confirm New Password</span>
+                  <input
+                    type="password"
+                    class="detail-input"
+                    v-model="passwordData.confirmPassword"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+              </div>
+              <div class="action-buttons">
+                <button class="btn-outline" @click="isChangingPassword = false">
+                  Cancel
+                </button>
+                <button
+                  class="btn-primary"
+                  @click="changePassword"
+                  :disabled="isLoading"
+                >
+                  <i v-if="isLoading" class="fa-solid fa-spinner fa-spin"></i>
+                  <i v-else class="fa-solid fa-lock"></i>
+                  {{ isLoading ? "Updating..." : "Update Password" }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -622,6 +745,20 @@ onMounted(loadUserDetails)
   flex-direction: column;
 }
 
+.password-form-card {
+  background-color: #fbfbfe;
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid #eae8f5;
+  margin-top: 1rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
 .btn-outline {
   background-color: transparent;
   color: #151875;
@@ -667,6 +804,16 @@ onMounted(loadUserDetails)
     flex-direction: column;
     align-items: flex-start;
     gap: 1.5rem;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .action-buttons button {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

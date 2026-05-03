@@ -300,7 +300,60 @@ onMounted(loadTags)
 </style>
 
 <style scoped>
-/* Reset & Layout */
+.animated-content {
+  animation: fadeSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  border: 1px solid #eae8f5;
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  font-size: 1.2rem;
+  color: #3f509e;
+  font-weight: 600;
+  gap: 12px;
+}
+
+.loader-circle {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3f509e;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 .page-wrapper {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: #ffffff;
@@ -354,7 +407,6 @@ onMounted(loadTags)
   align-items: start;
 }
 
-/* Sidebar */
 .sidebar-card {
   background: #ffffff;
   border-radius: 16px;
@@ -428,7 +480,6 @@ onMounted(loadTags)
   background-color: #fdf2f4 !important;
 }
 
-/* Toolbar */
 .modern-toolbar {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -489,9 +540,6 @@ onMounted(loadTags)
   background: #2e3b75;
 }
 
-/* -------------------------------------
-   MODERN TAG GRID (BIAŁE KAFELKI)
--------------------------------------- */
 .tag-chip-grid {
   display: flex;
   flex-wrap: wrap;
@@ -499,7 +547,7 @@ onMounted(loadTags)
 }
 
 .tag-card {
-  background: #ffffff; /* Białe tło karty */
+  background: #ffffff;
   border: 1px solid #eae8f5;
   border-radius: 16px;
   padding: 1rem 1.25rem;
@@ -518,9 +566,8 @@ onMounted(loadTags)
   box-shadow: 0 10px 25px rgba(63, 80, 158, 0.1);
 }
 
-/* Stylizacja tagu wewnątrz (Szary Badge) */
 .tag-inner-chip {
-  background-color: #f1f5f9; /* Szarawe tło samego tagu */
+  background-color: #f1f5f9;
   padding: 6px 14px;
   border-radius: 10px;
   display: flex;
@@ -541,15 +588,13 @@ onMounted(loadTags)
 }
 
 .tag-slug {
-  font-family:
-    "JetBrains Mono", "Fira Code", "Courier New", monospace; /* Tagowa czcionka */
+  font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
   font-weight: 700;
   color: #151875;
   font-size: 1rem;
   letter-spacing: -0.2px;
 }
 
-/* Delete Button */
 .delete-trigger {
   background: #fff0f0;
   color: #fb2e2e;
@@ -572,7 +617,6 @@ onMounted(loadTags)
   transform: rotate(90deg);
 }
 
-/* Rest of the UI (Modals, Headers, etc.) */
 .catalog-header h2 {
   font-size: 1.5rem;
   color: #151875;

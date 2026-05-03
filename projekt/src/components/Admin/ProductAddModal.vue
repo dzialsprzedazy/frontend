@@ -15,6 +15,7 @@ const isLoadingData = ref(false)
 
 const authors = ref([])
 const categories = ref([])
+const tags = ref([])
 
 const formData = ref({
   nazwaProduktu: "",
@@ -27,6 +28,7 @@ const formData = ref({
 })
 
 const selectedCategoryId = ref(null)
+const selectedTagIds = ref([])
 const authorQuery = ref("")
 const showAuthorDropdown = ref(false)
 
@@ -46,16 +48,18 @@ const filteredAuthors = computed(() => {
 const loadDictionaries = async () => {
   isLoadingData.value = true
   try {
-    const [catRes, autRes] = await Promise.all([
+    const [catRes, autRes, tagRes] = await Promise.all([
       api.get("categories"),
       api.get("autors"),
+      api.get("tags"),
     ])
     categories.value = catRes.data
     authors.value = autRes.data
+    tags.value = tagRes.data
   } catch (error) {
     showAlert({
       type: "error",
-      message: "Connection error: Failed to fetch categories or authors.",
+      message: "Connection error: Failed to fetch data dictionaries.",
       position: "top-right",
     })
   } finally {
@@ -116,6 +120,15 @@ const removeImage = () => {
   if (imageInputRef.value) imageInputRef.value.value = ""
 }
 
+const toggleTag = (tagId) => {
+  const index = selectedTagIds.value.indexOf(tagId)
+  if (index === -1) {
+    selectedTagIds.value.push(tagId)
+  } else {
+    selectedTagIds.value.splice(index, 1)
+  }
+}
+
 const resetForm = () => {
   formData.value = {
     nazwaProduktu: "",
@@ -128,6 +141,7 @@ const resetForm = () => {
   }
   authorQuery.value = ""
   selectedCategoryId.value = null
+  selectedTagIds.value = []
   removeImage()
 }
 
@@ -160,6 +174,7 @@ const handleSubmit = async () => {
       cena: Number(formData.value.cena),
       stanMagazynowy: Number(formData.value.stanMagazynowy),
       kategorieIds: [selectedCategoryId.value],
+      tagiIds: selectedTagIds.value, // Added tags array
     }
 
     await api.post("products", payload)
@@ -336,6 +351,21 @@ const handleSubmit = async () => {
                   @click="selectedCategoryId = cat.idKategorii"
                 >
                   {{ cat.nazwaKategorii }}
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label>Tags</label>
+              <div class="category-pills">
+                <div
+                  v-for="tag in tags"
+                  :key="tag.idTagu"
+                  class="pill-label tag"
+                  :class="{ active: selectedTagIds.includes(tag.idTagu) }"
+                  @click="toggleTag(tag.idTagu)"
+                >
+                  #{{ tag.nazwaTagu }}
                 </div>
               </div>
             </div>
@@ -702,6 +732,10 @@ textarea:focus {
   background-color: #3f509e;
   color: #ffffff;
   box-shadow: 0 4px 10px rgba(63, 80, 158, 0.2);
+}
+
+.pill-label.active.tag.active {
+  background: #8b5ed9 !important;
 }
 
 .checkbox-group {
