@@ -58,6 +58,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/admin/author-management",
+      name: "adminAuthorManagement",
+      component: () => import("../views/Admin/AuthorManagementView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/admin/tag-management",
+      name: "adminTagManagement",
+      component: () => import("../views/Admin/TagManagementView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/profile",
       name: "profile",
       component: () => import("../views/Account/UserProfileView.vue"),

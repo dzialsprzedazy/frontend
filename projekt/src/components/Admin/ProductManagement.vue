@@ -263,6 +263,16 @@ onMounted(loadProducts)
               <span class="icon">🛍️</span>
               <span class="menu-text">Product Management</span>
             </li>
+            <li @click="router.push('/admin/author-management')">
+              <span class="icon">✍️</span>
+              <span class="menu-text">Author Management</span>
+            </li>
+            <li @click="router.push('/admin/tag-management')">
+              <span class="icon menu-icon-fix"
+                ><i class="fa-solid fa-hashtag"></i
+              ></span>
+              <span class="menu-text">Tag Management</span>
+            </li>
             <li @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>
               <span class="menu-text">User Management</span>

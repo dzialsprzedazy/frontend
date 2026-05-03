@@ -5,35 +5,47 @@ import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
+import AuthorAddModal from "./AuthorAddModal.vue"
+import AuthorEditModal from "./AuthorEditModal.vue"
 
 import api from "@/services/axios.js"
 
 const router = useRouter()
 const { showAlert } = useAlerts()
 
-const users = ref([])
+const authors = ref([])
 const isLoading = ref(false)
 const fetchError = ref(null)
 
 const searchQuery = ref("")
-const selectedStatus = ref("All")
+
+const showAddModal = ref(false)
+
+const showEditModal = ref(false)
+const authorToEdit = ref(null)
 
 const showDeleteModal = ref(false)
-const userToDelete = ref(null)
+const authorToDelete = ref(null)
 
-const loadUsers = async () => {
+const loadAuthors = async () => {
   isLoading.value = true
   fetchError.value = null
 
   try {
-    const response = await api.get("users")
-    users.value = response.data
+    const response = await api.get("autors")
+
+    // Sort authors by last name, then first name
+    authors.value = response.data.sort((a, b) => {
+      const nameA = `${a.nazwisko || ""} ${a.imie || ""}`.toLowerCase()
+      const nameB = `${b.nazwisko || ""} ${b.imie || ""}`.toLowerCase()
+      return nameA.localeCompare(nameB)
+    })
   } catch (error) {
     if (typeof handleErrors === "function") {
       handleErrors(error, fetchError)
     } else {
       fetchError.value = {
-        message: "Could not load users list. Please try again.",
+        message: "Could not load authors list. Please try again.",
       }
     }
   } finally {
@@ -41,32 +53,36 @@ const loadUsers = async () => {
   }
 }
 
+const openEditModal = (author) => {
+  authorToEdit.value = { ...author }
+  showEditModal.value = true
+}
+
 const confirmDelete = (id) => {
-  userToDelete.value = id
+  authorToDelete.value = id
   showDeleteModal.value = true
 }
 
 const closeDeleteModal = () => {
   showDeleteModal.value = false
-  userToDelete.value = null
+  authorToDelete.value = null
 }
 
 const executeDelete = async () => {
-  if (!userToDelete.value) return
+  if (!authorToDelete.value) return
 
   try {
-    await api.delete(`users/${userToDelete.value}`)
-
+    await api.delete(`autors/${authorToDelete.value}`)
     showAlert({
       type: "success",
-      message: "User account deactivated successfully.",
+      message: "Author deleted successfully.",
       position: "top-right",
     })
-    await loadUsers()
+    await loadAuthors()
   } catch (error) {
     showAlert({
       type: "error",
-      message: "Failed to deactivate user account.",
+      message: "Failed to delete author.",
       position: "top-right",
     })
   } finally {
@@ -74,41 +90,20 @@ const executeDelete = async () => {
   }
 }
 
-const filteredUsers = computed(() => {
-  return users.value.filter((user) => {
+const filteredAuthors = computed(() => {
+  return authors.value.filter((author) => {
     const query = searchQuery.value.toLowerCase().trim()
+    const fullName =
+      `${author.imie || ""} ${author.nazwisko || ""}`.toLowerCase()
 
-    const name = (user.name || "").toLowerCase()
-    const surname = (user.surname || "").toLowerCase()
-    const email = (user.email || "").toLowerCase()
-
-    const nameSurname = `${name} ${surname}`.trim()
-    const surnameName = `${surname} ${name}`.trim()
-
-    const textMatch =
-      name.includes(query) ||
-      surname.includes(query) ||
-      nameSurname.includes(query) ||
-      surnameName.includes(query) ||
-      email.includes(query)
-
-    let statusMatch = true
-    if (selectedStatus.value === "Active") statusMatch = !user.czyUsuniety
-    if (selectedStatus.value === "Deleted") statusMatch = user.czyUsuniety
-
-    return textMatch && statusMatch
+    return fullName.includes(query)
   })
 })
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return "N/A"
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+const getInitials = (imie, nazwisko) => {
+  const first = imie ? imie.charAt(0).toUpperCase() : ""
+  const last = nazwisko ? nazwisko.charAt(0).toUpperCase() : ""
+  return `${first}${last}` || "?"
 }
 
 const handleLogout = () => {
@@ -124,7 +119,7 @@ const handleLogout = () => {
   router.push("/login")
 }
 
-onMounted(loadUsers)
+onMounted(loadAuthors)
 </script>
 
 <template>
@@ -134,7 +129,7 @@ onMounted(loadUsers)
         <h1 class="header-title">Admin Panel</h1>
         <p class="breadcrumbs">
           Home <span class="dot-separator">•</span>
-          <span class="active-page">User Management</span>
+          <span class="active-page">Author Management</span>
         </p>
       </div>
     </div>
@@ -155,7 +150,7 @@ onMounted(loadUsers)
               <span class="icon">🛍️</span>
               <span class="menu-text">Product Management</span>
             </li>
-            <li @click="router.push('/admin/author-management')">
+            <li class="active" @click="router.push('/admin/author-management')">
               <span class="icon">✍️</span>
               <span class="menu-text">Author Management</span>
             </li>
@@ -165,7 +160,7 @@ onMounted(loadUsers)
               ></span>
               <span class="menu-text">Tag Management</span>
             </li>
-            <li class="active" @click="router.push('/admin/user-management')">
+            <li @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>
               <span class="menu-text">User Management</span>
             </li>
@@ -186,12 +181,12 @@ onMounted(loadUsers)
         <ErrorCard
           v-if="fetchError"
           :message="fetchError.message"
-          @retry="loadUsers"
+          @retry="loadAuthors"
         />
 
         <div v-else-if="isLoading" class="dashboard-card loading-state">
           <div class="loader-circle"></div>
-          <span>Fetching user directory...</span>
+          <span>Fetching authors data...</span>
         </div>
 
         <div v-else class="animated-content">
@@ -201,25 +196,14 @@ onMounted(loadUsers)
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search by name, surname or email..."
+                placeholder="Search by first or last name..."
               />
             </div>
 
-            <div class="filter-pills">
-              <button
-                v-for="status in ['All', 'Active', 'Deleted']"
-                :key="status"
-                :class="['pill-btn', { active: selectedStatus === status }]"
-                @click="selectedStatus = status"
-              >
-                {{ status }}
-              </button>
-            </div>
-
             <div class="header-actions">
-              <button class="action-btn add disabled-btn" disabled>
-                <i class="fa-solid fa-user-plus"></i>
-                <span>Add Admin</span>
+              <button class="action-btn add" @click="showAddModal = true">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add Author</span>
               </button>
             </div>
           </div>
@@ -227,65 +211,48 @@ onMounted(loadUsers)
           <div class="catalog-section">
             <div class="catalog-header">
               <h2>
-                User Accounts
-                <span class="count-tag">{{ filteredUsers.length }}</span>
+                Authors Directory
+                <span class="count-tag">{{ filteredAuthors.length }}</span>
               </h2>
             </div>
 
-            <div class="user-grid">
-              <div v-if="filteredUsers.length === 0" class="empty-state">
+            <div class="author-list-container">
+              <div v-if="filteredAuthors.length === 0" class="empty-state">
                 <img
                   src="https://cdn-icons-png.flaticon.com/512/4076/4076432.png"
                   alt="Empty"
                 />
-                <p>No users found matching these filters.</p>
+                <p>No authors found.</p>
               </div>
 
               <div
-                v-for="user in filteredUsers"
-                :key="user.id"
-                class="user-row-card"
-                :class="{ 'soft-deleted': user.czyUsuniety }"
+                v-for="author in filteredAuthors"
+                :key="author.idAutora"
+                class="author-list-item"
               >
-                <div class="user-main-info">
-                  <div class="user-avatar-circle">
-                    <i class="fa-solid fa-user"></i>
+                <div class="author-info">
+                  <div class="author-initials">
+                    {{ getInitials(author.imie, author.nazwisko) }}
                   </div>
-                  <div class="name-details">
-                    <span class="u-name">
-                      <template v-if="user.name || user.surname">
-                        {{ user.name || "" }} {{ user.surname || "" }}
-                      </template>
-                      <template v-else>
-                        {{ user.userName }}
-                      </template>
-                    </span>
-                    <span class="u-email">{{ user.email }}</span>
-                  </div>
-                </div>
-
-                <div class="user-meta">
-                  <div class="meta-item">
-                    <i class="fa-regular fa-calendar-check"></i>
-                    <span>{{ formatDate(user.dataRejestracji) }}</span>
-                  </div>
-                </div>
-
-                <div class="user-status-tag">
-                  <span v-if="!user.czyUsuniety" class="badge active"
-                    >Active</span
+                  <span class="author-name"
+                    >{{ author.imie }} {{ author.nazwisko }}</span
                   >
-                  <span v-else class="badge deleted">Deleted</span>
                 </div>
 
                 <div class="product-actions">
                   <button
-                    class="icon-btn delete"
-                    title="Delete User"
-                    :disabled="user.czyUsuniety"
-                    @click="confirmDelete(user.id)"
+                    class="icon-btn edit"
+                    title="Edit"
+                    @click="openEditModal(author)"
                   >
-                    <i class="fa-solid fa-trash-can"></i>
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button
+                    class="icon-btn delete"
+                    title="Delete"
+                    @click="confirmDelete(author.idAutora)"
+                  >
+                    <i class="fa-solid fa-trash"></i>
                   </button>
                 </div>
               </div>
@@ -295,6 +262,19 @@ onMounted(loadUsers)
       </main>
     </div>
 
+    <AuthorAddModal
+      :show="showAddModal"
+      @close="showAddModal = false"
+      @author-added="loadAuthors"
+    />
+
+    <AuthorEditModal
+      :show="showEditModal"
+      :author="authorToEdit"
+      @close="showEditModal = false"
+      @author-updated="loadAuthors"
+    />
+
     <Transition name="modal">
       <div
         v-if="showDeleteModal"
@@ -303,7 +283,7 @@ onMounted(loadUsers)
       >
         <div class="modal-box confirm-box">
           <div class="modal-header">
-            <h3>Delete User Account</h3>
+            <h3>Delete Author</h3>
             <button class="close-btn" @click="closeDeleteModal">
               <i class="fa-solid fa-xmark"></i>
             </button>
@@ -311,15 +291,15 @@ onMounted(loadUsers)
 
           <div class="modal-body">
             <p class="confirm-text">
-              Are you sure you want to delete this user? This action will mark
-              the account as deleted in the system.
+              Are you sure you want to delete this author? This action cannot be
+              undone.
             </p>
           </div>
 
           <div class="modal-footer">
             <button class="btn-text" @click="closeDeleteModal">Cancel</button>
             <button class="btn-primary btn-danger" @click="executeDelete">
-              <i class="fa-solid fa-user-slash"></i> Delete User
+              <i class="fa-solid fa-trash"></i> Delete
             </button>
           </div>
         </div>
@@ -327,6 +307,15 @@ onMounted(loadUsers)
     </Transition>
   </div>
 </template>
+
+<style>
+:root {
+  --nv-z: 9999;
+}
+.Notivue__wrapper {
+  z-index: 9999 !important;
+}
+</style>
 
 <style scoped>
 .page-wrapper {
@@ -430,6 +419,11 @@ onMounted(loadUsers)
   display: inline-block;
 }
 
+.menu-list li:hover:not(.divider) .icon,
+.menu-list li.active .icon {
+  transform: scale(1.15);
+}
+
 .divider {
   height: 1px;
   background-color: #eae8f5;
@@ -448,7 +442,6 @@ onMounted(loadUsers)
 .animated-content {
   animation: fadeSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
-
 @keyframes fadeSlideUp {
   from {
     opacity: 0;
@@ -458,6 +451,16 @@ onMounted(loadUsers)
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.dashboard-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  border: 1px solid #eae8f5;
+  position: relative;
+  margin-bottom: 2rem;
 }
 
 .loading-state {
@@ -479,7 +482,6 @@ onMounted(loadUsers)
   height: 24px;
   animation: spin 1s linear infinite;
 }
-
 @keyframes spin {
   0% {
     transform: rotate(0deg);
@@ -491,7 +493,7 @@ onMounted(loadUsers)
 
 .modern-toolbar {
   display: grid;
-  grid-template-columns: 1.5fr 1fr auto;
+  grid-template-columns: 1fr auto;
   gap: 1.5rem;
   align-items: center;
   background: white;
@@ -530,33 +532,6 @@ onMounted(loadUsers)
   outline: none;
 }
 
-.filter-pills {
-  display: flex;
-  gap: 8px;
-  background: #f0f2f8;
-  padding: 5px;
-  border-radius: 14px;
-}
-
-.pill-btn {
-  flex: 1;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: transparent;
-  color: #555;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.pill-btn.active {
-  background: white;
-  color: #3f509e;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-}
-
 .header-actions {
   display: flex;
   gap: 10px;
@@ -569,6 +544,8 @@ onMounted(loadUsers)
   padding: 12px 20px;
   border-radius: 12px;
   font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
   border: none;
 }
 
@@ -578,9 +555,9 @@ onMounted(loadUsers)
   box-shadow: 0 8px 20px rgba(63, 80, 158, 0.3);
 }
 
-.disabled-btn {
-  opacity: 0.6;
-  cursor: not-allowed;
+.action-btn:hover {
+  transform: translateY(-3px);
+  opacity: 0.9;
 }
 
 .catalog-header h2 {
@@ -600,126 +577,80 @@ onMounted(loadUsers)
   border-radius: 20px;
 }
 
-.user-grid {
+.author-list-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
 }
 
-.user-row-card {
-  display: grid;
-  grid-template-columns: 2fr 1fr 120px 80px;
+.author-list-item {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  background: white;
   padding: 1rem 1.5rem;
-  border-radius: 16px;
-  border: 1px solid #f0f0f5;
-  transition: all 0.3s;
-  position: relative;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.15s ease;
 }
 
-.user-row-card:hover:not(.soft-deleted) {
-  border-color: #3f509e;
-  box-shadow: 0 10px 25px rgba(63, 80, 158, 0.08);
-  transform: scale(1.01);
+.author-list-item:last-child {
+  border-bottom: none;
 }
 
-.user-row-card.soft-deleted {
-  background-color: #f9f9fb;
-  opacity: 0.65;
-  filter: grayscale(0.4);
+.author-list-item:hover {
+  background-color: #f8fafc;
 }
 
-.user-main-info {
+.author-info {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 1rem;
 }
 
-.user-avatar-circle {
-  width: 48px;
-  height: 48px;
+.author-initials {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: #f0f2f8;
-  color: #3f509e;
+  background-color: #f1f5f9;
+  color: #475569;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  flex-shrink: 0;
-}
-
-.name-details {
-  overflow: hidden;
-}
-
-.u-name {
-  font-weight: 700;
-  color: #151875;
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.u-email {
-  font-size: 0.85rem;
-  color: #8a8fb9;
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 0.9rem;
-  color: #4a405c;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border: 1px solid #e2e8f0;
 }
 
-.meta-item i {
-  color: #8a8fb9;
-}
-
-.badge {
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  display: inline-block;
-}
-
-.badge.active {
-  background: #e6f6f0;
-  color: #21a366;
-}
-
-.badge.deleted {
-  background: #fff0f0;
-  color: #fb2e2e;
+.author-name {
+  font-weight: 500;
+  color: #0f172a;
+  font-size: 1rem;
 }
 
 .product-actions {
   display: flex;
-  justify-content: flex-end;
   gap: 8px;
 }
 
 .icon-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 35px;
+  height: 35px;
+  border-radius: 8px;
   border: none;
   cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+}
+
+.icon-btn.edit {
+  background: #f0f2f8;
+  color: #3f509e;
 }
 
 .icon-btn.delete {
@@ -727,13 +658,7 @@ onMounted(loadUsers)
   color: #fb2e2e;
 }
 
-.icon-btn.delete:disabled {
-  background: #f0f0f5;
-  color: #ccc;
-  cursor: not-allowed;
-}
-
-.icon-btn:hover:not(:disabled) {
+.icon-btn:hover {
   transform: scale(1.1);
 }
 
@@ -742,8 +667,6 @@ onMounted(loadUsers)
   text-align: center;
   color: #8a8fb9;
   background-color: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #eae8f5;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -761,22 +684,31 @@ onMounted(loadUsers)
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(21, 14, 36, 0.4);
+  background-color: rgba(21, 14, 36, 0.4);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
 }
 
 .modal-box {
   background: #ffffff;
   border-radius: 16px;
   width: 100%;
-  max-width: 450px;
+  max-width: 500px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+}
+
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.3s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }
 
 .modal-header {
@@ -804,30 +736,22 @@ onMounted(loadUsers)
   border-radius: 4px;
   transition: all 0.2s;
 }
-
 .close-btn:hover {
   background-color: #f6f5ff;
   color: #151875;
 }
 
 .modal-body {
-  padding: 2rem 1.5rem;
-}
-
-.confirm-text {
-  font-size: 1.05rem;
-  color: #4a405c;
-  margin: 0;
-  line-height: 1.5;
+  padding: 1.5rem;
 }
 
 .modal-footer {
-  padding: 1.2rem;
-  background: #fbfbfe;
+  padding: 1rem 1.5rem;
+  background-color: #fbfbfe;
   border-top: 1px solid #eae8f5;
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 1rem;
 }
 
 .btn-text {
@@ -839,7 +763,6 @@ onMounted(loadUsers)
   padding: 0.8rem 1.2rem;
   border-radius: 8px;
 }
-
 .btn-text:hover {
   color: #151875;
   background-color: #f6f5ff;
@@ -857,147 +780,60 @@ onMounted(loadUsers)
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
 }
-
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: #2e3b75;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(63, 80, 158, 0.2);
 }
 
-.btn-primary.btn-danger {
-  background-color: #fb2e2e;
+.confirm-box {
+  max-width: 420px;
 }
 
-.btn-primary.btn-danger:hover {
-  background-color: #d32525;
-  box-shadow: 0 4px 12px rgba(251, 46, 46, 0.2);
+.confirm-text {
+  font-size: 1.05rem;
+  color: #4a405c;
+  margin: 0;
+  line-height: 1.5;
 }
 
-.modal-enter-active,
-.modal-leave-active {
-  transition: all 0.3s ease;
+.btn-danger {
+  background-color: #e03a5b !important;
 }
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
+
+.btn-danger:hover {
+  background-color: #c22948 !important;
+  box-shadow: 0 4px 12px rgba(224, 58, 91, 0.2) !important;
 }
 
 @media (max-width: 1024px) {
-  .main-content {
-    grid-template-columns: 240px 1fr;
-    gap: 1.5rem;
-  }
-}
-
-@media (max-width: 860px) {
-  .main-content {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-
-  .sidebar-card {
-    padding: 1rem;
-  }
-
-  .menu-list {
-    flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 8px;
-  }
-
-  .menu-list li {
-    white-space: nowrap;
-    padding: 0.6rem 1rem;
-  }
-
-  .menu-list li:hover:not(.divider) {
-    transform: translateY(-2px);
-  }
-
-  .divider {
-    width: 1px;
-    height: auto;
-    margin: 0 0.5rem;
-  }
-
   .modern-toolbar {
     grid-template-columns: 1fr;
-    gap: 1rem;
   }
-
   .header-actions {
-    justify-content: stretch;
-  }
-
-  .action-btn {
-    width: 100%;
-    justify-content: center;
+    justify-content: flex-end;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 950px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
   .header-banner {
     padding: 2.5rem 0;
-    margin-bottom: 2rem;
-  }
-
-  .header-title {
-    font-size: 1.8rem;
-  }
-
-  .container {
-    padding: 0 1rem;
-  }
-
-  .user-row-card {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    padding: 1.25rem;
-  }
-
-  .user-status-tag {
-    position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
-  }
-
-  .user-meta {
-    padding-top: 0.5rem;
-  }
-
-  .product-actions {
-    justify-content: flex-start;
-    border-top: 1px solid #f0f0f5;
-    padding-top: 1rem;
-    margin-top: 0.5rem;
-  }
-
-  .icon-btn {
-    width: 100%;
-  }
-
-  .icon-btn.restore {
-    background: #e6f6f0;
-    color: #21a366;
-  }
-
-  .filter-pills {
-    flex-direction: column;
   }
 }
 
-@media (max-width: 400px) {
-  .modal-footer {
+@media (max-width: 768px) {
+  .author-list-item {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
   }
-
-  .btn-text,
-  .btn-primary {
-    width: 100%;
+  .product-actions {
+    align-self: flex-end;
   }
 }
 </style>

@@ -44,11 +44,19 @@ const filteredUsers = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
   if (!query) return users.value
 
-  return users.value.filter(
-    (user) =>
-      user.email.toLowerCase().includes(query) ||
-      user.userName.toLowerCase().includes(query),
-  )
+  return users.value.filter((user) => {
+    const email = user.email?.toLowerCase() || ""
+    const name = user.name?.toLowerCase() || ""
+    const surname = user.surname?.toLowerCase() || ""
+    const fullName = `${name} ${surname}`.trim()
+
+    return (
+      email.includes(query) ||
+      name.includes(query) ||
+      surname.includes(query) ||
+      fullName.includes(query)
+    )
+  })
 })
 
 const isAllSelected = computed({
@@ -113,8 +121,6 @@ const sendDiscountCodes = () => {
     discountCode: discountCode.value.trim(),
     discountPercentage: Number(discountPercentage.value),
   }))
-
-  console.log("Sending discount codes with payload:", payload)
 
   showAlert({
     type: "success",
@@ -181,6 +187,16 @@ onMounted(loadUsers)
             <li @click="router.push('/admin/product-management')">
               <span class="icon">🛍️</span>
               <span class="menu-text">Product Management</span>
+            </li>
+            <li @click="router.push('/admin/author-management')">
+              <span class="icon">✍️</span>
+              <span class="menu-text">Author Management</span>
+            </li>
+            <li @click="router.push('/admin/tag-management')">
+              <span class="icon menu-icon-fix"
+                ><i class="fa-solid fa-hashtag"></i
+              ></span>
+              <span class="menu-text">Tag Management</span>
             </li>
             <li @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>
@@ -274,7 +290,7 @@ onMounted(loadUsers)
                 <input
                   type="text"
                   v-model="searchQuery"
-                  placeholder="Search by email or username..."
+                  placeholder="Search by name or email..."
                   class="search-input"
                 />
               </div>
@@ -320,12 +336,23 @@ onMounted(loadUsers)
                   </div>
 
                   <div class="user-info-cell">
-                    <div class="user-avatar">
-                      {{ user.userName.charAt(0).toUpperCase() }}
+                    <div class="user-avatar-circle">
+                      <i class="fa-solid fa-user"></i>
                     </div>
                     <div class="user-details">
-                      <h4 class="user-name">{{ user.userName }}</h4>
-                      <p class="user-email">{{ user.email }}</p>
+                      <h4 class="user-name">
+                        <template v-if="user.name || user.surname">
+                          {{
+                            [user.name, user.surname].filter(Boolean).join(" ")
+                          }}
+                        </template>
+                        <template v-else>
+                          {{ user.email }}
+                        </template>
+                      </h4>
+                      <p class="user-email" v-if="user.name || user.surname">
+                        {{ user.email }}
+                      </p>
                     </div>
                   </div>
 
@@ -819,14 +846,13 @@ onMounted(loadUsers)
   flex: 1;
 }
 
-.user-avatar {
-  width: 44px;
-  height: 44px;
+.user-avatar-circle {
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background-color: #fdf2f6;
-  color: #fb2e86;
-  font-weight: 700;
-  font-size: 1.2rem;
+  background-color: #f8f4ff;
+  color: #8d44adeb;
+  font-size: 1.1rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -843,13 +869,13 @@ onMounted(loadUsers)
   margin: 0 0 0.2rem 0;
   color: #151875;
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
 }
 
 .user-email {
   margin: 0;
   color: #8a8fb9;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .user-meta-cell {
