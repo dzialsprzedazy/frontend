@@ -32,7 +32,6 @@ const handleSubmit = () => {
     position: "top-right",
   })
 
-  // Clear form fields
   name.value = ""
   email.value = ""
   subject.value = ""
@@ -58,7 +57,8 @@ const handleSubmit = () => {
         <div class="info-card dashboard-card">
           <h3 class="section-title">Get in Touch</h3>
           <p class="info-text">
-            We'd love to hear from you! Whether you have a question about our products, need assistance, feel free to reach out.
+            We'd love to hear from you! Whether you have a question about our
+            products, need assistance, feel free to reach out.
           </p>
           <div class="contact-details">
             <div class="detail-item">
@@ -185,10 +185,10 @@ const handleSubmit = () => {
 
 .contact-grid {
   display: grid;
-  grid-template-columns: 1fr 1.5fr; /* Info card smaller, form larger */
+  grid-template-columns: 1fr 1.5fr;
   gap: 2.5rem;
   width: 100%;
-  max-width: 1000px; /* Limit overall width */
+  max-width: 1000px;
 }
 
 .dashboard-card {

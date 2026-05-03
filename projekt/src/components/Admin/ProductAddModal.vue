@@ -174,7 +174,7 @@ const handleSubmit = async () => {
       cena: Number(formData.value.cena),
       stanMagazynowy: Number(formData.value.stanMagazynowy),
       kategorieIds: [selectedCategoryId.value],
-      tagiIds: selectedTagIds.value, // Added tags array
+      tagiIds: selectedTagIds.value,
     }
 
     await api.post("products", payload)
