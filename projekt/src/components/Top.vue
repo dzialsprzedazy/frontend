@@ -101,9 +101,9 @@ const onSearchSubmit = () => {
             >Wishlist
             <i class="fa-regular fa-heart"></i>
           </router-link>
-          <a href="#" class="cart-link"
-            ><i class="fa-solid fa-cart-shopping"></i
-          ></a>
+          <router-link to="/cart" class="cart-link">
+          <i class="fa-solid fa-cart-shopping"></i>
+          </router-link>
         </div>
       </div>
     </nav>
