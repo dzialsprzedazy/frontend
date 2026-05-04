@@ -211,7 +211,7 @@ onMounted(loadAuthors)
           <div class="catalog-section">
             <div class="catalog-header">
               <h2>
-                Authors Directory
+                Authors Catalog
                 <span class="count-tag">{{ filteredAuthors.length }}</span>
               </h2>
             </div>
