@@ -85,6 +85,11 @@ const router = createRouter({
       name: "wishlist",
       component: () => import("../views/Others/WishlistView.vue"),
     },
+    {
+      path: "/cart",
+      name: "cart",
+      component: () => import("../views/Others/CartView.vue"), 
+    },
     // ERROR 404 - MUST BE AT THE END OF THE FILE!
     {
       path: "/:catchAll(.*)",
