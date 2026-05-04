@@ -3,7 +3,6 @@ import { ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 import api from "@/services/axios.js"
-import { is } from "date-fns/locale"
 
 const router = useRouter()
 const { showAlert } = useAlerts()
@@ -33,12 +32,47 @@ const newAddress = ref({
   kodPocztowy: "",
 })
 
+const orders = ref([])
+const isLoadingOrders = ref(false)
+
+const getOrderStatusInfo = (statusId) => {
+  const statuses = {
+    1: { text: "W realizacji", class: "status-warning" },
+    2: { text: "Wysłane", class: "status-warning" },
+    3: { text: "Dostarczone", class: "status-success" },
+    4: { text: "Anulowane", class: "status-danger" },
+    5: { text: "Oczekuje na płatność", class: "status-warning" },
+  }
+  return statuses[statusId] || { text: "Nieznany", class: "" }
+}
+
+const formatOrderDate = (dateString) => {
+  if (!dateString) return ""
+  return new Date(dateString).toLocaleDateString("pl-PL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+}
+
 const loadAddresses = async () => {
   try {
     const response = await api.get("users/addresses")
     addresses.value = response.data
   } catch (error) {
     showAlert({ type: "error", message: "Failed to load addresses." })
+  }
+}
+
+const loadOrders = async () => {
+  try {
+    isLoadingOrders.value = true
+    const response = await api.get("users/orders")
+    orders.value = response.data
+  } catch (error) {
+    showAlert({ type: "error", message: "Failed to load orders." })
+  } finally {
+    isLoadingOrders.value = false
   }
 }
 
@@ -105,6 +139,7 @@ const deleteAddress = async (id) => {
 const setActiveTab = (tab) => {
   activeTab.value = tab
   if (tab === "addresses") loadAddresses()
+  if (tab === "orders") loadOrders()
 }
 
 const loadUserDetails = async () => {
@@ -241,7 +276,7 @@ onMounted(loadUserDetails)
         <p class="breadcrumbs">
           Home <span class="dot-separator">•</span>
           <span class="active-page">{{
-            activeTab === "dashboard" ? "Dashboard" : "Saved Addresses"
+            activeTab === "dashboard" ? "Dashboard" : activeTab === "orders" ? "Order History" : "Saved Addresses"
           }}</span>
         </p>
       </div>
@@ -258,7 +293,10 @@ onMounted(loadUserDetails)
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
             </li>
-            <li>
+            <li
+              :class="{ active: activeTab === 'orders' }"
+              @click="setActiveTab('orders')"
+            >
               <span class="icon">📦</span>
               <span class="menu-text">Order History</span>
             </li>
@@ -279,6 +317,7 @@ onMounted(loadUserDetails)
       </aside>
 
       <main class="content-area">
+        <!-- ZAKŁADKA DASHBOARD -->
         <div v-if="activeTab === 'dashboard'" class="dashboard-card">
           <div class="profile-header">
             <div class="profile-avatar">
@@ -410,6 +449,57 @@ onMounted(loadUserDetails)
           </div>
         </div>
 
+        <div v-else-if="activeTab === 'orders'" class="dashboard-card">
+          <div class="profile-header">
+            <div class="profile-title">
+              <h2>Order History</h2>
+              <p>View and manage your recent orders</p>
+            </div>
+          </div>
+
+          <div class="details-section">
+            <div v-if="isLoadingOrders" class="empty-state" style="text-align: center; padding: 3rem">
+              <p class="detail-label">Loading orders...</p>
+            </div>
+            
+            <div v-else-if="orders.length > 0" class="details-grid" style="grid-template-columns: 1fr; gap: 1rem;">
+              <div 
+                v-for="order in orders" 
+                :key="order.idZamowienia" 
+                class="security-flex"
+                style="flex-direction: column; align-items: stretch; gap: 1rem;"
+              >
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eae8f5; padding-bottom: 1rem;">
+                  <div>
+                    <span class="detail-label">Order ID: #{{ order.idZamowienia }}</span>
+                    <span class="detail-value" style="display: block; margin-top: 0.3rem;">{{ formatOrderDate(order.dataZamowienia) }}</span>
+                  </div>
+                  <div style="text-align: right;">
+                    <span class="detail-label">Status</span>
+                    <span 
+                      class="status-badge" 
+                      :class="getOrderStatusInfo(order.idStatusu).class"
+                      style="display: block; margin-top: 0.3rem;"
+                    >
+                      {{ getOrderStatusInfo(order.idStatusu).text }}
+                    </span>
+                  </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span class="detail-value">Total: <strong>{{ order.calkowitaKwota.toFixed(2) }} PLN</strong></span>
+                  <button class="btn-outline" style="padding: 0.5rem 1rem;">View Details</button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="empty-state" style="text-align: center; padding: 3rem">
+              <span style="font-size: 3rem; display: block; margin-bottom: 1rem">📦</span>
+              <p class="detail-label">You haven't placed any orders yet.</p>
+              <button class="btn-primary" style="margin-top: 1rem;" @click="router.push('/products')">
+                Start Shopping
+              </button>
+            </div>
+          </div>
+        </div>
         <div v-else-if="activeTab === 'addresses'" class="dashboard-card">
           <div class="profile-header">
             <div class="profile-title">
@@ -842,6 +932,31 @@ onMounted(loadUserDetails)
 .btn-outline:hover {
   border-color: #8a8fb9;
   background-color: #ffffff;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-success {
+  background-color: #e6fbd9;
+  color: #2e7d32;
+}
+
+.status-warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-danger {
+  background-color: #fdf2f4;
+  color: #e03a5b;
 }
 
 @media (max-width: 850px) {
