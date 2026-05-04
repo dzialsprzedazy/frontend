@@ -19,6 +19,34 @@ const isLoading = ref(false)
 
 const activeTab = ref("dashboard")
 
+const selectedOrder = ref(null);
+const showOrderDetails = ref(false);
+const expandedOrderId = ref(null);
+
+
+const openOrderDetails = async (orderId) => {
+  
+  if (expandedOrderId.value === orderId) {
+    expandedOrderId.value = null;
+    return;
+  }
+
+  try {
+    isLoading.value = true;
+    const response = await api.get(`users/orders/${orderId}`);
+    
+    selectedOrder.value = response.data;
+
+    expandedOrderId.value = orderId;
+    
+    showOrderDetails.value = true;
+  } catch (error) {
+    showAlert({ type: "error", message: "Could not load order details." });
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 const addresses = ref([])
 const showAddressForm = ref(false)
 const isEditingAddress = ref(false)
@@ -102,7 +130,24 @@ const openEditAddress = (addr) => {
   showAddressForm.value = true
 }
 
-const saveAddress = async () => {
+
+
+  const saveAddress = async () => {
+
+  const { miasto, ulica, numerBudynku, kodPocztowy } = newAddress.value;
+  
+  if (!miasto.trim() || !ulica.trim() || !numerBudynku.trim() || !kodPocztowy.trim()) {
+    showAlert({ type: "error", message: "Uzupełnij wymagane pola!" });
+    return;
+  }
+
+  const zipRegex = /^\d{2}-\d{3}$/;
+  if (!zipRegex.test(kodPocztowy)) {
+    showAlert({ type: "error", message: "Kod pocztowy musi mieć format 00-000" });
+    return;
+  }
+
+
   try {
     isLoading.value = true
     if (isEditingAddress.value) {
@@ -317,7 +362,7 @@ onMounted(loadUserDetails)
       </aside>
 
       <main class="content-area">
-        <!-- ZAKŁADKA DASHBOARD -->
+        
         <div v-if="activeTab === 'dashboard'" class="dashboard-card">
           <div class="profile-header">
             <div class="profile-avatar">
@@ -449,6 +494,7 @@ onMounted(loadUserDetails)
           </div>
         </div>
 
+        
         <div v-else-if="activeTab === 'orders'" class="dashboard-card">
           <div class="profile-header">
             <div class="profile-title">
@@ -462,33 +508,70 @@ onMounted(loadUserDetails)
               <p class="detail-label">Loading orders...</p>
             </div>
             
-            <div v-else-if="orders.length > 0" class="details-grid" style="grid-template-columns: 1fr; gap: 1rem;">
+            <div v-else-if="orders.length > 0" class="details-grid" style="grid-template-columns: 1fr; gap: 1.5rem;">
               <div 
                 v-for="order in orders" 
                 :key="order.idZamowienia" 
                 class="security-flex"
-                style="flex-direction: column; align-items: stretch; gap: 1rem;"
+                style="flex-direction: column; align-items: stretch; gap: 0; padding: 0; overflow: hidden;"
               >
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eae8f5; padding-bottom: 1rem;">
-                  <div>
-                    <span class="detail-label">Order ID: #{{ order.idZamowienia }}</span>
-                    <span class="detail-value" style="display: block; margin-top: 0.3rem;">{{ formatOrderDate(order.dataZamowienia) }}</span>
+                
+                <div style="padding: 1.5rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eae8f5; padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <div>
+                      <span class="detail-label">Order ID: #{{ order.idZamowienia }}</span>
+                      <span class="detail-value" style="display: block; margin-top: 0.3rem;">{{ formatOrderDate(order.dataZamowienia) }}</span>
+                    </div>
+                    <div style="text-align: right;">
+                      <span class="detail-label">Status</span>
+                      <span 
+                        class="status-badge" 
+                        :class="getOrderStatusInfo(order.idStatusu).class"
+                        style="display: block; margin-top: 0.3rem;"
+                      >
+                        {{ getOrderStatusInfo(order.idStatusu).text }}
+                      </span>
+                    </div>
                   </div>
-                  <div style="text-align: right;">
-                    <span class="detail-label">Status</span>
-                    <span 
-                      class="status-badge" 
-                      :class="getOrderStatusInfo(order.idStatusu).class"
-                      style="display: block; margin-top: 0.3rem;"
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="detail-value">Total: <strong>{{ order.calkowitaKwota.toFixed(2) }} PLN</strong></span>
+                    
+                    
+                    <button 
+                      class="btn-outline" 
+                      :class="{ 'active-btn': expandedOrderId === order.idZamowienia }"
+                      @click="openOrderDetails(order.idZamowienia)"
                     >
-                      {{ getOrderStatusInfo(order.idStatusu).text }}
-                    </span>
+                      {{ expandedOrderId === order.idZamowienia ? 'Hide Details' : 'View Details' }}
+                    </button>
                   </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span class="detail-value">Total: <strong>{{ order.calkowitaKwota.toFixed(2) }} PLN</strong></span>
-                  <button class="btn-outline" style="padding: 0.5rem 1rem;">View Details</button>
-                </div>
+
+                
+                <Transition name="details">
+                  <div 
+                    v-if="expandedOrderId === order.idZamowienia && selectedOrder" 
+                    class="expanded-row"
+                  >
+                    <div class="details-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; margin-bottom: 0;">
+                      <div class="detail-group">
+                        <span class="detail-label">Payment Method</span>
+                        <span class="detail-value">{{ selectedOrder.metodaPlatnosciNazwa || 'Standard' }}</span>
+                      </div>
+                      <div class="detail-group">
+                        <span class="detail-label">Delivery Method</span>
+                        <span class="detail-value">{{ selectedOrder.metodaDostawyNazwa || 'Courier' }}</span>
+                      </div>
+                      <div class="detail-group" v-if="selectedOrder.adresZamowienia">
+                        <span class="detail-label">Shipping Address</span>
+                        <span class="detail-value" style="font-size: 0.95rem; line-height: 1.4;">
+                          {{ selectedOrder.adresZamowienia.ulica }} {{ selectedOrder.adresZamowienia.numerBudynku }}<br>
+                          {{ selectedOrder.adresZamowienia.kodPocztowy }} {{ selectedOrder.adresZamowienia.miasto }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Transition>
               </div>
             </div>
             <div v-else class="empty-state" style="text-align: center; padding: 3rem">
@@ -500,7 +583,10 @@ onMounted(loadUserDetails)
             </div>
           </div>
         </div>
+
+        <!-- ZAKŁADKA ADDRESSES -->
         <div v-else-if="activeTab === 'addresses'" class="dashboard-card">
+          <!-- Pozostała część kodu bez zmian -->
           <div class="profile-header">
             <div class="profile-title">
               <h2>Your Saved Addresses</h2>
@@ -508,9 +594,7 @@ onMounted(loadUserDetails)
             </div>
             <button
               class="btn-primary"
-              @click="
-                showAddressForm ? (showAddressForm = false) : openAddAddress()
-              "
+              @click="showAddressForm ? (showAddressForm = false) : openAddAddress()"
             >
               {{ showAddressForm ? "Cancel" : "Add New Address" }}
             </button>
@@ -522,124 +606,62 @@ onMounted(loadUserDetails)
                 v-for="addr in addresses"
                 :key="addr.idAdresu"
                 class="security-flex"
-                style="
-                  justify-content: space-between;
-                  align-items: center;
-                  margin-bottom: 1rem;
-                "
+                style="justify-content: space-between; align-items: center; margin-bottom: 1rem;"
               >
                 <div class="address-info">
                   <p class="detail-value">
-                    <strong
-                      >{{ addr.ulica }} {{ addr.numerBudynku
-                      }}{{
-                        addr.numerLokalu ? "/" + addr.numerLokalu : ""
-                      }}</strong
-                    >
+                    <strong>{{ addr.ulica }} {{ addr.numerBudynku }}{{ addr.numerLokalu ? "/" + addr.numerLokalu : "" }}</strong>
                   </p>
-                  <p
-                    class="detail-label"
-                    style="text-transform: none; margin: 0"
-                  >
+                  <p class="detail-label" style="text-transform: none; margin: 0">
                     {{ addr.kodPocztowy }} {{ addr.miasto }}
                   </p>
                 </div>
                 <div class="action-buttons">
-                  <button
-                    class="btn-outline"
-                    @click="openEditAddress(addr)"
-                    style="padding: 0.5rem 1rem"
-                  >
-                    Edit
-                  </button>
+                  <button class="btn-outline" @click="openEditAddress(addr)" style="padding: 0.5rem 1rem">Edit</button>
                   <button
                     class="btn-outline"
                     @click="deleteAddress(addr.idAdresu)"
-                    style="
-                      padding: 0.5rem 1rem;
-                      color: #fb2e86;
-                      border-color: #fdf2f6;
-                    "
+                    style="padding: 0.5rem 1rem; color: #fb2e86; border-color: #fdf2f6;"
                   >
                     Delete
                   </button>
                 </div>
               </div>
             </div>
-            <div
-              v-else
-              class="empty-state"
-              style="text-align: center; padding: 3rem"
-            >
-              <span style="font-size: 3rem; display: block; margin-bottom: 1rem"
-                >📍</span
-              >
+            <div v-else class="empty-state" style="text-align: center; padding: 3rem">
+              <span style="font-size: 3rem; display: block; margin-bottom: 1rem">📍</span>
               <p class="detail-label">No addresses saved yet.</p>
             </div>
           </div>
 
           <div v-else class="password-form-card">
-            <h3 class="section-title">
-              {{ isEditingAddress ? "Edit Address" : "New Address" }}
-            </h3>
+            <h3 class="section-title">{{ isEditingAddress ? "Edit Address" : "New Address" }}</h3>
             <div class="details-grid">
               <div class="detail-group">
                 <span class="detail-label">City</span>
-                <input
-                  class="detail-input"
-                  v-model="newAddress.miasto"
-                  placeholder="e.g. Warsaw"
-                />
+                <input class="detail-input" v-model="newAddress.miasto" placeholder="e.g. Warsaw" />
               </div>
               <div class="detail-group">
                 <span class="detail-label">Street</span>
-                <input
-                  class="detail-input"
-                  v-model="newAddress.ulica"
-                  placeholder="e.g. Kwiatowa"
-                />
+                <input class="detail-input" v-model="newAddress.ulica" placeholder="e.g. Kwiatowa" />
               </div>
               <div class="detail-group">
                 <span class="detail-label">Building No.</span>
-                <input
-                  class="detail-input"
-                  v-model="newAddress.numerBudynku"
-                  placeholder="e.g. 12"
-                />
+                <input class="detail-input" v-model="newAddress.numerBudynku" placeholder="e.g. 12" />
               </div>
               <div class="detail-group">
                 <span class="detail-label">Apartment No.</span>
-                <input
-                  class="detail-input"
-                  v-model="newAddress.numerLokalu"
-                  placeholder="Optional"
-                />
+                <input class="detail-input" v-model="newAddress.numerLokalu" placeholder="Optional" />
               </div>
               <div class="detail-group">
                 <span class="detail-label">Zip Code</span>
-                <input
-                  class="detail-input"
-                  v-model="newAddress.kodPocztowy"
-                  placeholder="00-000"
-                />
+                <input class="detail-input" v-model="newAddress.kodPocztowy" placeholder="00-000" />
               </div>
             </div>
             <div class="action-buttons" style="margin-top: 1.5rem">
-              <button class="btn-outline" @click="showAddressForm = false">
-                Cancel
-              </button>
-              <button
-                class="btn-primary"
-                @click="saveAddress"
-                :disabled="isLoading"
-              >
-                {{
-                  isLoading
-                    ? "Saving..."
-                    : isEditingAddress
-                      ? "Update Address"
-                      : "Save Address"
-                }}
+              <button class="btn-outline" @click="showAddressForm = false">Cancel</button>
+              <button class="btn-primary" @click="saveAddress" :disabled="isLoading">
+                {{ isLoading ? "Saving..." : (isEditingAddress ? "Update Address" : "Save Address") }}
               </button>
             </div>
           </div>
@@ -957,6 +979,41 @@ onMounted(loadUserDetails)
 .status-danger {
   background-color: #fdf2f4;
   color: #e03a5b;
+}
+
+
+.details-enter-active,
+.details-leave-active {
+  transition: all 0.3s ease-in-out;
+  overflow: hidden; 
+  max-height: 500px; 
+}
+
+.details-enter-from,
+.details-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.expanded-row {
+  background-color: #fbfbfe;
+  border-top: 1px solid #eae8f5;
+  padding: 1.5rem;
+}
+
+.expanded-row:hover {
+  background-color: #f6f5ff;
+}
+
+
+.active-btn {
+  background-color: #3f509e !important;
+  color: white !important;
+  border-color: #3f509e !important;
 }
 
 @media (max-width: 850px) {
