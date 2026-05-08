@@ -5,6 +5,7 @@ import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+import { addToCart } from "@/components/Others/cartLogic.js"
 
 const route = useRoute()
 const router = useRouter()
@@ -166,6 +167,10 @@ const filteredProducts = computed(() => {
 onMounted(() => {
   loadData()
 })
+
+const handleAdd = async (product) => {
+  addToCart(product, showAlert)
+}
 </script>
 
 <template>
@@ -366,7 +371,7 @@ onMounted(() => {
             </p>
 
             <div class="product-actions">
-              <button class="action-btn cart-btn">
+              <button v-on:click="handleAdd(item)" class="action-btn cart-btn">
                 <i class="fa-solid fa-cart-shopping"></i> Add to Cart
               </button>
               <div class="secondary-actions">

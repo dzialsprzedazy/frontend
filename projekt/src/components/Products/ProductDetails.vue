@@ -5,7 +5,7 @@ import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
-
+import { addToCart } from "@/components/Others/cartLogic.js"
 const currentTab = ref("Description")
 
 const route = useRoute()
@@ -25,7 +25,6 @@ const loadProduct = async (idFromRoute = null) => {
   product.value = null
   currentTab.value = "Description"
   isInWishlist.value = false
-
   try {
     const id = idFromRoute || route.params.id
     if (!id) return
@@ -106,6 +105,9 @@ watch(
     }
   },
 )
+const handleAdd = async () => {
+  addToCart(product.value, showAlert)
+}
 
 onMounted(() => {
   loadProduct()
@@ -178,7 +180,7 @@ onMounted(() => {
               </p>
 
               <div class="product-actions">
-                <button class="cart-btn">
+                <button class="cart-btn" v-on:click="handleAdd">
                   <i class="fa-solid fa-cart-shopping"></i> Add To Cart
                 </button>
                 <button
