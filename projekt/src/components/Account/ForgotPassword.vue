@@ -1,38 +1,50 @@
 <script setup>
 import { ref } from "vue"
-import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+import api from "@/services/axios.js"
 
 const { showAlert } = useAlerts()
-const router = useRouter()
 
 const emailData = ref("")
+const isLoading = ref(false)
 
 const handleForgotPassword = async () => {
   if (!emailData.value) {
     showAlert({
       type: "error",
-      message: "Please enter your email address.",
+      message: "Proszę podać adres e-mail.",
       position: "top-right",
     })
     return
   }
 
-  const payload = {
-    email: emailData.value,
+  isLoading.value = true
+  try {
+    const payload = {
+      email: emailData.value,
+    }
+
+    await api.post("account/forgot-password", payload)
+
+    showAlert({
+      type: "info",
+      message:
+        "Jeśli konto o podanym adresie e-mail istnieje, wysłano na nie dalsze instrukcje.",
+      position: "top-right",
+      duration: 10000,
+    })
+  } catch (error) {
+    console.error("Błąd przy resetowaniu hasła:", error)
+    showAlert({
+      type: "info",
+      message:
+        "Jeśli konto o podanym adresie e-mail istnieje, wysłano na nie dalsze instrukcje.",
+      position: "top-right",
+      duration: 10000,
+    })
+  } finally {
+    isLoading.value = false
   }
-
-  console.log("Data to send to the password reset endpoint:", payload)
-
-  showAlert({
-    type: "info",
-    message:
-      "If an account with that email exists, a password reset link has been sent.",
-    position: "top-right",
-    duration: Infinity,
-  })
-
-  router.push("/reset-password")
 }
 </script>
 
@@ -42,7 +54,7 @@ const handleForgotPassword = async () => {
       <div class="form-card">
         <h2 class="form-title">Forgot Password</h2>
         <p class="form-subtitle">
-          Enter your email to receive a password reset link.
+          Podaj swój adres e-mail, aby otrzymać link do zresetowania hasła.
         </p>
 
         <div class="input-wrapper">
@@ -51,11 +63,16 @@ const handleForgotPassword = async () => {
             class="custom-input"
             placeholder="Email Address"
             v-model="emailData"
+            @keyup.enter="handleForgotPassword"
           />
         </div>
 
-        <button @click="handleForgotPassword" class="primary-btn">
-          Send Reset Link
+        <button
+          @click="handleForgotPassword"
+          class="primary-btn"
+          :disabled="isLoading"
+        >
+          {{ isLoading ? "Wysyłanie..." : "Wyślij link resetujący" }}
         </button>
 
         <p class="register-text">

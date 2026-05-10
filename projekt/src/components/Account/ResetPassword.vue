@@ -1,26 +1,42 @@
 <script setup>
-import { ref } from "vue"
-import { useRouter } from "vue-router"
+import { ref, onMounted } from "vue"
+import { useRouter, useRoute } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+import api from "@/services/axios.js"
 
 const { showAlert } = useAlerts()
 const router = useRouter()
+const route = useRoute()
 
 const emailData = ref("")
-const tempPasswordData = ref("")
+const tokenData = ref("")
 const newPasswordData = ref("")
 const confirmNewPasswordData = ref("")
+const isLoading = ref(false)
+
+onMounted(() => {
+  emailData.value = String(route.query.email || "")
+  tokenData.value = String(route.query.token || "")
+
+  if (!tokenData.value || !emailData.value) {
+    showAlert({
+      type: "error",
+      message: "Nieprawidłowy lub wygasły link do resetowania hasła.",
+      position: "top-right",
+    })
+  }
+})
 
 const handleResetPassword = async () => {
   if (
     !emailData.value ||
-    !tempPasswordData.value ||
+    !tokenData.value ||
     !newPasswordData.value ||
     !confirmNewPasswordData.value
   ) {
     showAlert({
       type: "error",
-      message: "All fields are required.",
+      message: "Wszystkie pola są wymagane.",
       position: "top-right",
     })
     return
@@ -29,28 +45,43 @@ const handleResetPassword = async () => {
   if (newPasswordData.value !== confirmNewPasswordData.value) {
     showAlert({
       type: "error",
-      message: "New passwords do not match!",
+      message: "Nowe hasła nie są zgodne!",
       position: "top-right",
     })
     return
   }
 
-  const payload = {
-    email: emailData.value,
-    temporaryPassword: tempPasswordData.value,
-    newPassword: newPasswordData.value,
+  isLoading.value = true
+  try {
+    const payload = {
+      email: emailData.value,
+      token: tokenData.value,
+      newPassword: newPasswordData.value,
+    }
+
+    await api.post("account/reset-password", payload)
+
+    showAlert({
+      type: "success",
+      message:
+        "Hasło zostało pomyślnie zresetowane! Zaloguj się używając nowego hasła.",
+      position: "top-right",
+    })
+
+    router.push("/login")
+  } catch (error) {
+    console.error("Błąd przy resetowaniu hasła:", error)
+    const errorMessage =
+      error.response?.data?.message ||
+      "Nie udało się zresetować hasła. Kod może być nieprawidłowy lub wygasł."
+    showAlert({
+      type: "error",
+      message: errorMessage,
+      position: "top-right",
+    })
+  } finally {
+    isLoading.value = false
   }
-
-  console.log("Data to send to the reset password endpoint:", payload)
-
-  showAlert({
-    type: "success",
-    message:
-      "Password has been successfully reset! Please log in with your new password.",
-    position: "top-right",
-  })
-
-  router.push("/login")
 }
 </script>
 
@@ -60,7 +91,7 @@ const handleResetPassword = async () => {
       <div class="form-card">
         <h2 class="form-title">Reset Password</h2>
         <p class="form-subtitle">
-          Enter your email, temporary password, and new password.
+          Wprowadź nowe hasło dla swojego konta.
         </p>
 
         <div class="input-wrapper">
@@ -69,17 +100,12 @@ const handleResetPassword = async () => {
             class="custom-input"
             placeholder="Email Address"
             v-model="emailData"
+            readonly
+            disabled
           />
         </div>
 
-        <div class="input-wrapper">
-          <input
-            type="password"
-            class="custom-input"
-            placeholder="Temporary Password"
-            v-model="tempPasswordData"
-          />
-        </div>
+        <input type="hidden" v-model="tokenData" />
 
         <div class="input-wrapper">
           <input
@@ -87,6 +113,7 @@ const handleResetPassword = async () => {
             class="custom-input"
             placeholder="New Password"
             v-model="newPasswordData"
+            autocomplete="new-password" 
           />
         </div>
 
@@ -96,11 +123,16 @@ const handleResetPassword = async () => {
             class="custom-input"
             placeholder="Confirm New Password"
             v-model="confirmNewPasswordData"
+            autocomplete="new-password" 
           />
         </div>
 
-        <button @click="handleResetPassword" class="primary-btn">
-          Reset Password
+        <button
+          @click="handleResetPassword"
+          class="primary-btn"
+          :disabled="isLoading"
+        >
+          {{ isLoading ? "Resetowanie..." : "Zresetuj hasło" }}
         </button>
 
         <p class="register-text">
