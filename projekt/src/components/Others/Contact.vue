@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from "vue"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+import api from "@/services/axios.js"
 
 const { showAlert } = useAlerts()
 
@@ -8,8 +9,9 @@ const name = ref("")
 const email = ref("")
 const subject = ref("")
 const message = ref("")
+const isLoading = ref(false)
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!name.value || !email.value || !subject.value || !message.value) {
     showAlert({
       type: "error",
@@ -19,23 +21,36 @@ const handleSubmit = () => {
     return
   }
 
-  console.log("Contact form submitted:", {
-    name: name.value,
-    email: email.value,
-    subject: subject.value,
-    message: message.value,
-  })
+  isLoading.value = true
 
-  showAlert({
-    type: "success",
-    message: "Your message has been sent successfully!",
-    position: "top-right",
-  })
+  try {
+    await api.post("contact", {
+      name: name.value,
+      email: email.value,
+      subject: subject.value,
+      message: message.value,
+    })
 
-  name.value = ""
-  email.value = ""
-  subject.value = ""
-  message.value = ""
+    showAlert({
+      type: "success",
+      message: "Your message has been sent successfully!",
+      position: "top-right",
+    })
+
+    name.value = ""
+    email.value = ""
+    subject.value = ""
+    message.value = ""
+  } catch (error) {
+    console.error("Błąd wysyłania wiadomości:", error)
+    showAlert({
+      type: "error",
+      message: error.response?.data?.message || "Failed to send message. Please try again.",
+      position: "top-right",
+    })
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -120,7 +135,17 @@ const handleSubmit = () => {
                 v-model="message"
               ></textarea>
             </div>
-            <button type="submit" class="primary-btn">Send Message</button>
+            <button 
+              type="submit" 
+              class="primary-btn" 
+              :disabled="isLoading"
+            >
+              <span v-if="!isLoading">Send Message</span>
+              <span v-else class="loading-content">
+                <span class="spinner"></span>
+                Sending...
+              </span>
+            </button>
           </form>
         </div>
       </div>
@@ -329,4 +354,34 @@ const handleSubmit = () => {
     font-size: 1.8rem;
   }
 }
+
+.primary-btn:disabled {
+  background-color: #a0a4c0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.loading-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 </style>

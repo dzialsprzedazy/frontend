@@ -12,7 +12,7 @@ const handleForgotPassword = async () => {
   if (!emailData.value) {
     showAlert({
       type: "error",
-      message: "Proszę podać adres e-mail.",
+      message: "Please enter your email address.",
       position: "top-right",
     })
     return
@@ -28,17 +28,16 @@ const handleForgotPassword = async () => {
 
     showAlert({
       type: "info",
-      message:
-        "Jeśli konto o podanym adresie e-mail istnieje, wysłano na nie dalsze instrukcje.",
+      message: "If an account with this email exists, further instructions have been sent.",
       position: "top-right",
       duration: 10000,
     })
+    emailData.value = ""
   } catch (error) {
-    console.error("Błąd przy resetowaniu hasła:", error)
+    console.error("Password reset error:", error)
     showAlert({
       type: "info",
-      message:
-        "Jeśli konto o podanym adresie e-mail istnieje, wysłano na nie dalsze instrukcje.",
+      message: "If an account with this email exists, further instructions have been sent.",
       position: "top-right",
       duration: 10000,
     })
@@ -54,7 +53,7 @@ const handleForgotPassword = async () => {
       <div class="form-card">
         <h2 class="form-title">Forgot Password</h2>
         <p class="form-subtitle">
-          Podaj swój adres e-mail, aby otrzymać link do zresetowania hasła.
+          Enter your email address to receive a password reset link.
         </p>
 
         <div class="input-wrapper">
@@ -72,7 +71,11 @@ const handleForgotPassword = async () => {
           class="primary-btn"
           :disabled="isLoading"
         >
-          {{ isLoading ? "Wysyłanie..." : "Wyślij link resetujący" }}
+          <span v-if="!isLoading">Send Reset Link</span>
+          <span v-else class="loading-content">
+            <span class="spinner"></span>
+            Sending...
+          </span>
         </button>
 
         <p class="register-text">
@@ -192,10 +195,39 @@ const handleForgotPassword = async () => {
     box-shadow 0.2s ease;
 }
 
-.primary-btn:hover {
+.primary-btn:hover:not(:disabled) {
   background-color: #2e3b75;
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(46, 59, 117, 0.2);
+}
+
+.primary-btn:disabled {
+  background-color: #a0a4c0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.loading-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .register-text {

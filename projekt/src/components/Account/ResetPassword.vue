@@ -21,7 +21,7 @@ onMounted(() => {
   if (!tokenData.value || !emailData.value) {
     showAlert({
       type: "error",
-      message: "Nieprawidłowy lub wygasły link do resetowania hasła.",
+      message: "Invalid or expired password reset link.",
       position: "top-right",
     })
   }
@@ -36,7 +36,7 @@ const handleResetPassword = async () => {
   ) {
     showAlert({
       type: "error",
-      message: "Wszystkie pola są wymagane.",
+      message: "All fields are required.",
       position: "top-right",
     })
     return
@@ -45,7 +45,7 @@ const handleResetPassword = async () => {
   if (newPasswordData.value !== confirmNewPasswordData.value) {
     showAlert({
       type: "error",
-      message: "Nowe hasła nie są zgodne!",
+      message: "New passwords do not match!",
       position: "top-right",
     })
     return
@@ -63,17 +63,16 @@ const handleResetPassword = async () => {
 
     showAlert({
       type: "success",
-      message:
-        "Hasło zostało pomyślnie zresetowane! Zaloguj się używając nowego hasła.",
+      message: "Password has been successfully reset! Please log in using your new password.",
       position: "top-right",
     })
 
     router.push("/login")
   } catch (error) {
-    console.error("Błąd przy resetowaniu hasła:", error)
+    console.error("Password reset error:", error)
     const errorMessage =
       error.response?.data?.message ||
-      "Nie udało się zresetować hasła. Kod może być nieprawidłowy lub wygasł."
+      "Failed to reset password. The link might be invalid or expired."
     showAlert({
       type: "error",
       message: errorMessage,
@@ -91,7 +90,7 @@ const handleResetPassword = async () => {
       <div class="form-card">
         <h2 class="form-title">Reset Password</h2>
         <p class="form-subtitle">
-          Wprowadź nowe hasło dla swojego konta.
+          Enter a new password for your account.
         </p>
 
         <div class="input-wrapper">
@@ -124,6 +123,7 @@ const handleResetPassword = async () => {
             placeholder="Confirm New Password"
             v-model="confirmNewPasswordData"
             autocomplete="new-password" 
+            @keyup.enter="handleResetPassword"
           />
         </div>
 
@@ -132,7 +132,11 @@ const handleResetPassword = async () => {
           class="primary-btn"
           :disabled="isLoading"
         >
-          {{ isLoading ? "Resetowanie..." : "Zresetuj hasło" }}
+          <span v-if="!isLoading">Reset Password</span>
+          <span v-else class="loading-content">
+            <span class="spinner"></span>
+            Resetting...
+          </span>
         </button>
 
         <p class="register-text">
@@ -252,10 +256,39 @@ const handleResetPassword = async () => {
     box-shadow 0.2s ease;
 }
 
-.primary-btn:hover {
+.primary-btn:hover:not(:disabled) {
   background-color: #2e3b75;
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(46, 59, 117, 0.2);
+}
+
+.primary-btn:disabled {
+  background-color: #a0a4c0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.loading-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .register-text {
