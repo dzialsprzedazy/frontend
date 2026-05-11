@@ -18,11 +18,11 @@ defineEmits(["retry"])
     <div class="error-icon">
       <i class="fa-solid fa-triangle-exclamation"></i>
     </div>
-    <h3 class="error-title">Ups! Coś poszło nie tak</h3>
+    <h3 class="error-title">Ups! Something went wrong</h3>
     <p class="error-message">{{ message }}</p>
 
     <button v-if="showRetry" class="retry-button" @click="$emit('retry')">
-      <i class="fa-solid fa-rotate-right"></i> Spróbuj ponownie
+      <i class="fa-solid fa-rotate-right"></i> Try again
     </button>
   </div>
 </template>
