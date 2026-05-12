@@ -103,11 +103,19 @@ const toggleWishlist = async (product) => {
     if (isInWishlist) {
       await api.delete(`users/wishlist/${product.idProduktu}`)
       wishlistProductIds.value.delete(product.idProduktu)
-      showAlert({ type: "success", message: "Product removed from wishlist!", position: "top-right" })
+      showAlert({
+        type: "success",
+        message: "Product removed from wishlist!",
+        position: "top-right",
+      })
     } else {
       await api.post(`users/wishlist/${product.idProduktu}`)
       wishlistProductIds.value.add(product.idProduktu)
-      showAlert({ type: "success", message: "Product added to wishlist!", position: "top-right" })
+      showAlert({
+        type: "success",
+        message: "Product added to wishlist!",
+        position: "top-right",
+      })
     }
   } catch (error) {
     const errorMsg = error.response?.data?.error || "Failed to update wishlist."
@@ -376,7 +384,11 @@ const handleAdd = async (product) => {
               </button>
               <div class="secondary-actions">
                 <button
-                  class="icon-btn"
+                  class="icon-btn wishlist-btn"
+                  :class="{
+                    'is-active': wishlistProductIds.has(item.idProduktu),
+                    'is-loading': isWishlistActionLoading === item.idProduktu,
+                  }"
                   :title="
                     wishlistProductIds.has(item.idProduktu)
                       ? 'Remove from Wishlist'
@@ -386,14 +398,18 @@ const handleAdd = async (product) => {
                   :disabled="isWishlistActionLoading === item.idProduktu"
                 >
                   <i
+                    v-if="isWishlistActionLoading === item.idProduktu"
+                    class="fa-solid fa-spinner fa-spin"
+                  ></i>
+                  <i
+                    v-else
                     :class="[
                       'fa-heart',
                       wishlistProductIds.has(item.idProduktu)
                         ? 'fa-solid'
                         : 'fa-regular',
                     ]"
-                  >
-                  </i>
+                  ></i>
                 </button>
                 <router-link :to="`/products/${item.idProduktu}`">
                   <button class="icon-btn" title="Show the Product">
@@ -846,9 +862,60 @@ const handleAdd = async (product) => {
   background-color: #2e3b75;
 }
 
-.icon-btn .fa-solid.fa-heart {
+/* WISHLIST STYLE AND ANIMATION */
+.wishlist-btn {
+  background-color: #ffffff;
+  color: #8a8fb9;
+  border: 1px solid #eae8f5;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.wishlist-btn:hover:not(:disabled) {
+  background-color: #fff0f6;
+  border-color: #fbcce0;
+  color: #fb2e86;
+  transform: translateY(-2px) scale(1.05);
+}
+
+.wishlist-btn.is-active {
+  background-color: #fff0f6;
+  border-color: #fbcce0;
   color: #fb2e86;
 }
+
+.wishlist-btn.is-active i.fa-solid {
+  animation: heart-pop 0.7s ease-in-out both;
+}
+
+.wishlist-btn.is-loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  background-color: #f8f9fc;
+  color: #7d4cd4;
+}
+
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.65);
+  }
+  40% {
+    transform: scale(0.8);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  80% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+/* END OF WISHLIST STYLE AND ANIMATION */
 
 .product-title-link {
   text-decoration: none;

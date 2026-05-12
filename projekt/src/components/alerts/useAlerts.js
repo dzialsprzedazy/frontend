@@ -1,18 +1,11 @@
-import { usePush, useNotivue } from "notivue"
+import { usePush } from "notivue"
 
 export function useAlerts() {
   const push = usePush()
-  const config = useNotivue()
 
-  const showAlert = ({
-    type = "info",
-    message,
-    position = "top-right",
-    duration,
-  }) => {
-    config.update({ position: position })
-
+  const showAlert = ({ type = "info", message, duration }) => {
     const options = { message }
+
     if (duration !== undefined) {
       options.duration = duration
     } else if (type === "error") {

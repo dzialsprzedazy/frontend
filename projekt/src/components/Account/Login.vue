@@ -17,6 +17,7 @@ const handleLogin = async () => {
       type: "error",
       message: "Please enter both email and password.",
       position: "top-right",
+      duration: 10000,
     })
     return
   }
@@ -38,6 +39,7 @@ const handleLogin = async () => {
       type: "success",
       message: "Successfully logged in!",
       position: "top-right",
+      duration: 5000,
     })
 
     router.push("/profile")
@@ -51,11 +53,20 @@ const handleLogin = async () => {
         ? errorData
         : errorData?.message || "Invalid email or password."
 
-    showAlert({
-      type: "error",
-      message,
-      position: "top-right",
-    })
+    if (message === "Invalid email or password.") {
+      showAlert({
+        type: "error",
+        message,
+        position: "top-right",
+        duration: 10000,
+      })
+    } else {
+      showAlert({
+        type: "error",
+        message,
+        position: "top-right",
+      })
+    }
   } finally {
     isLoading.value = false
   }
