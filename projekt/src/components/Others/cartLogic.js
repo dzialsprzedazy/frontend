@@ -37,7 +37,7 @@ const createRemoteCart = async () => {
     idUzytkownika: userId,
   }
 
-  return await api.post(`cart/${userId} `, payload)
+  return await api.post("cart", payload)
 }
 export const getCart = async () => {
   if (!token) {
