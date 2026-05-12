@@ -89,9 +89,10 @@ const toggleWishlist = async (product) => {
   const token = localStorage.getItem("token")
   if (!token) {
     showAlert({
-      type: "error",
+      type: "warning",
       message: "Please log in to add products to your wishlist.",
       position: "top-right",
+      duration: 5000,
     })
     return
   }
