@@ -37,7 +37,6 @@ const handleUpdate = async (product, delta) => {
 
 const handleClear = () => {
   clearCartLogic()
-  showAlert({ type: "success", message: "Cart cleared" })
 }
 
 const handleRemove = (id) => {

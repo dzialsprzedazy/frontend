@@ -4,6 +4,7 @@ import api from '@/services/axios.js';
 import { handleErrors } from '../../../errors/ErrorHandler.js';
 import ErrorCard from '../../../errors/ErrorCard.vue';
 import { useAlerts } from '@/components/alerts/useAlerts.js';
+import { addToCart } from '@/components/Others/cartLogic.js';
 
 const wishlistItems = ref([]);
 const isLoading = ref(true);
@@ -44,7 +45,9 @@ const removeFromWishlist = async (productId) => {
     });
     }
 };
-
+const handleAdd = async (product) => {
+  addToCart(product, showAlert)
+}
 onMounted(() => {
   fetchWishlist();
 });
@@ -103,7 +106,7 @@ onMounted(() => {
                   {{ item.cena?.toFixed(2) ?? '0.00' }} <small>PLN</small>
                 </p>
                 <div class="action-buttons">
-                  <button class="cart-btn" title="Add to Cart">
+                  <button class="cart-btn" v-on:click="handleAdd(item)" title="Add to Cart">
                     <i class="fa-solid fa-cart-shopping"></i>
                   </button>
                   <button class="remove-btn" title="Remove from Wishlist" @click="removeFromWishlist(item.productId)">

@@ -21,16 +21,13 @@ export const cartSum = computed(() => {
     return acc + price * qty
   }, 0)
 })
-const addItemToCart = (product) => {
-  if (!token) {
-    cartItems.value.push({
-      ...product,
-      quantity: 1,
-    })
-  } else {
-    handleRemoteAdd()
-  }
-}
+
+export const cartCount = computed(() => {
+  return cartItems.value.reduce((acc, item) => {
+    const qty = item.ilosc || 0
+    return acc + qty
+  }, 0)
+})
 
 const createRemoteCart = async () => {
   const payload = {
@@ -73,6 +70,7 @@ export const updateQuantity = async (productId, delta, showAlert) => {
       showAlert({
         type: "warning",
         message: `Max stock: ${product.stanMagazynowy}`,
+        duration: 800
       })
       return false
     }
@@ -107,7 +105,8 @@ export const updateQuantity = async (productId, delta, showAlert) => {
 export const addToCart = async (product, showAlert) => {
   try {
     if (!cartId.value && token) await getCart()
-
+    //fixes diffrent Id name
+    if(product.productId) product.idProduktu = product.productId 
     const exists = cartItems.value.some(
       (i) => i.idProduktu === product.idProduktu,
     )
@@ -126,15 +125,15 @@ export const addToCart = async (product, showAlert) => {
     } else {
       await api.post("cartitems", {
         idKoszyka: cartId.value,
-        idProduktu: product.idProduktu,
+        idProduktu: product.idProduktu ,
         ilosc: 1,
       })
       await getCart()
     }
 
-    showAlert({ type: "success", message: "Added to cart" })
+    showAlert({ type: "success", message: "Added to cart", duration: 1000 })
   } catch (error) {
-    showAlert({ type: "error", message: "Failed to add product" })
+    showAlert({ type: "error", message: "Failed to add product",duration: 1000 })
   }
 }
 
@@ -151,7 +150,7 @@ export const removeFromCart = async (itemId, showAlert) => {
     }
   }
 
-  showAlert({ type: "success", message: "Item removed" })
+  showAlert({ type: "success", message: "Item removed", duration: 1000})
 }
 
 export const clearCart = () => {

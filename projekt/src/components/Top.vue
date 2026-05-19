@@ -1,7 +1,7 @@
 <script setup>
-import { ref, watch, computed } from "vue"
+import { ref, watch, computed ,onMounted} from "vue"
 import { useRouter, useRoute } from "vue-router"
-
+import { getCart , cartCount } from "@/components/Others/cartLogic.js"
 const searchQuery = ref("")
 const router = useRouter()
 const route = useRoute()
@@ -36,6 +36,11 @@ const onSearchSubmit = () => {
     })
   }
 }
+
+onMounted(() => {
+  getCart()
+})
+
 </script>
 
 <template>
@@ -94,7 +99,7 @@ const onSearchSubmit = () => {
             :to="isLoggedIn ? '/profile' : '/login'"
             class="action-link"
           >
-            {{ isLoggedIn ? 'Account' : 'Login' }}
+            {{ isLoggedIn ? "Account" : "Login" }}
             <i class="fa-regular fa-user"></i>
           </router-link>
           <router-link to="/wishlist" class="action-link"
@@ -102,7 +107,8 @@ const onSearchSubmit = () => {
             <i class="fa-regular fa-heart"></i>
           </router-link>
           <router-link to="/cart" class="cart-link">
-          <i class="fa-solid fa-cart-shopping"></i>
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
           </router-link>
         </div>
       </div>
@@ -262,12 +268,34 @@ const onSearchSubmit = () => {
 }
 
 .cart-link {
+  position: relative;
   color: #0a0a2a;
   font-size: 20px;
   text-decoration: none;
   transition: color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
 }
 
+.cart-badge {
+  position: absolute;
+  bottom: -5px;
+  right: -7px;
+  background-color: #6b3cbd;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 50%;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
 .mobile-menu-checkbox {
   display: none;
 }
