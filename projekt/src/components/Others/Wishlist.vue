@@ -4,7 +4,7 @@ import api from '@/services/axios.js';
 import { handleErrors } from '../../../errors/ErrorHandler.js';
 import ErrorCard from '../../../errors/ErrorCard.vue';
 import { useAlerts } from '@/components/alerts/useAlerts.js';
-import { addToCart } from '@/components/Others/cartLogic.js';
+import { addToCart } from '@/components/Cart/cartLogic.js';
 
 const wishlistItems = ref([]);
 const isLoading = ref(true);
@@ -94,13 +94,13 @@ onMounted(() => {
                   <router-link :to="`/products/${item.productId}`" class="product-title-link">{{ item.nazwaProduktu }}</router-link>
                 </h3>
                 <span class="product-author">
-                  By 
+                  By
                   <strong>
                     {{ item.autorImie }} {{ item.autorNazwisko }}
                   </strong>
                 </span>
               </div>
-              
+
               <div class="card-footer">
                 <p class="current-price">
                   {{ item.cena?.toFixed(2) ?? '0.00' }} <small>PLN</small>
@@ -427,7 +427,7 @@ onMounted(() => {
   .header-title {
     font-size: 1.8rem;
   }
-  
+
   .container {
     padding: 0 1rem;
   }

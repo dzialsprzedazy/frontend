@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from "vue"
 import api from "@/services/axios.js"
-import { cartItems, cartSum, clearCart } from "@/components/Others/cartLogic"
+import { cartItems, cartSum, clearCart } from "@/components/Cart/cartLogic"
 import DeliverySelection from "./DeliverySelection.vue"
 const isLoggedIn = localStorage.getItem("token") != null
 
@@ -53,12 +53,6 @@ const selectedDelivery = computed({
   set: (val) => emit("update:selectedDelivery", val),
 })
 const isLocalDelivery = ref(false)
-const test = () => {
-  console.log(selectedDelivery)
-  console.log(props.selectedDelivery)
-
-  console.log(isLocalDelivery)
-}
 
 const hasFirstName = ref(false)
 const hasLastName = ref(false)
@@ -97,7 +91,6 @@ const isPostalCodeValid = computed(() => {
 })
 
 const isFormInvalid = computed(() => {
-  console.log(checkoutForm)
   return (
     !checkoutForm.value.firstName ||
     !checkoutForm.value.lastName ||
@@ -342,7 +335,6 @@ onMounted(() => {
             </div>
             <div class="checkout-section mb-4">
               <h3 class="section-subtitle">2. delivery Method</h3>
-              <button v-on:click="test">test</button>
               <DeliverySelection
                 v-model="selectedDelivery"
                 v-model:is-local-delivery="isLocalDelivery"

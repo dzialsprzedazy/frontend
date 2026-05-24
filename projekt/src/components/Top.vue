@@ -1,7 +1,7 @@
 <script setup>
-import { ref, watch, computed ,onMounted} from "vue"
+import { ref, watch, computed, onMounted } from "vue"
 import { useRouter, useRoute } from "vue-router"
-import { getCart , cartCount } from "@/components/Others/cartLogic.js"
+import { getCart, cartCount } from "@/components/Cart/cartLogic.js"
 const searchQuery = ref("")
 const router = useRouter()
 const route = useRoute()
@@ -40,7 +40,6 @@ const onSearchSubmit = () => {
 onMounted(() => {
   getCart()
 })
-
 </script>
 
 <template>

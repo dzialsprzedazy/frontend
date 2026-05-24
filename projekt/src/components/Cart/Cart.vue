@@ -7,11 +7,11 @@ import {
   updateQuantity,
   removeFromCart,
   clearCart as clearCartLogic,
-} from "@/components/Others/cartLogic"
+} from "@/components/Cart/cartLogic"
 import { handleErrors } from "@/../errors/ErrorHandler.js"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 import ErrorCard from "@/../errors/ErrorCard.vue"
-import Checkout from "@/components/Others/Checkout.vue"
+import Checkout from "./Checkout.vue"
 import DeliverySelection from "./DeliverySelection.vue"
 import api from "@/services/axios.js"
 

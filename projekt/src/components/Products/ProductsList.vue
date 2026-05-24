@@ -5,7 +5,7 @@ import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
-import { addToCart } from "@/components/Others/cartLogic.js"
+import { addToCart } from "@/components/Cart/cartLogic.js"
 
 const route = useRoute()
 const router = useRouter()

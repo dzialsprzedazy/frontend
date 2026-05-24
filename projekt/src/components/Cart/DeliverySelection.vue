@@ -94,7 +94,6 @@ const selectMethod = (method) => {
   gap: 12px;
 }
 
-/* Wariant siatki kafelków (drugie miejsce) */
 .delivery-layout.variant-grid {
   display: flex;
   flex-direction: row;
@@ -150,7 +149,6 @@ const selectMethod = (method) => {
   color: #151875;
 }
 
-/* Strefa animacji tekstu i ceny */
 .delivery-action-zone {
   position: relative;
   display: flex;
@@ -158,7 +156,6 @@ const selectMethod = (method) => {
   justify-content: center;
 }
 
-/* Dla listy strefa jest wyrównana do prawej, dla siatki wyśrodkowana */
 .variant-list .delivery-action-zone {
   justify-content: flex-end;
   min-width: 80px;
@@ -185,7 +182,6 @@ const selectMethod = (method) => {
   white-space: nowrap;
 }
 
-/* Wyzwalanie hover i active dla efektu podmieniania tekstu */
 .delivery-card-option:hover .delivery-action-text,
 .delivery-card-option.active .delivery-action-text {
   opacity: 0;
@@ -202,7 +198,6 @@ const selectMethod = (method) => {
   color: #3f509e;
 }
 
-/* Ptaszek wyboru */
 .checked-badge {
   position: absolute;
   background: #ffffff;
