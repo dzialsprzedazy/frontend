@@ -11,12 +11,39 @@ import {
 import { handleErrors } from "@/../errors/ErrorHandler.js"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 import ErrorCard from "@/../errors/ErrorCard.vue"
+import Checkout from "@/components/Others/Checkout.vue"
+import DeliverySelection from "./DeliverySelection.vue"
+import api from "@/services/axios.js"
+
 const { showAlert } = useAlerts()
+const token = localStorage.getItem("token")
 const isLoading = ref(true)
 const fetchError = ref(null)
+const showCheckout = ref(false)
 
-const shippingCost = 15
+const calculateShippingFlag = ref(false)
 
+const shippingCost = ref(null)
+const discount = ref(null)
+const addresses = ref([])
+const addressQuery = ref("")
+const showAddressDropdown = ref(false)
+
+const isLocalDelivery = ref(false)
+const selectedDelivery = ref({
+  id: 0,
+  name: "",
+  price: 0.0,
+  icon: "fa-solid fa-truck",
+})
+
+const addressForm = ref({
+  miasto: "",
+  ulica: "",
+  numerBudynku: "",
+  numerLokalu: "",
+  kodPocztowy: "",
+})
 const loadCart = async () => {
   window.scrollTo(0, 0)
   isLoading.value = true
@@ -31,6 +58,87 @@ const loadCart = async () => {
   }
 }
 
+const hasMoreThanOneAdress = computed(() => {
+  return addresses != null && addresses.value.length > 1
+})
+
+const loadAddresses = async () => {
+  if (!token) return
+
+  try {
+    const response = await api.get("users/addresses")
+    addresses.value = response.data || []
+    if (addresses.value.length > 0) {
+      const lastAddress = addresses.value[addresses.value.length - 1]
+      selectAddress(lastAddress)
+    }
+  } catch (error) {
+    console.error("Failed to fetch user addresses:", error)
+  }
+}
+
+const calculateShipping = () => {
+  shippingCost.value = null
+  let address = addressForm.value
+
+  if (
+    !cartItems ||
+    cartItems.value.length < 1 ||
+    address.miasto === "" ||
+    address.ulica === "" ||
+    address.numerBudynku === "" ||
+    !isPostalCodeValid
+  ) {
+    return
+  }
+  shippingCost.value = selectedDelivery.value ? selectedDelivery.value.price : 0
+
+  for (var item of cartItems.value) {
+    if (item.product == null || item.product.kategorie == null) {
+      console.error("something went wrong with resorces")
+      continue
+    }
+
+    const isBook = item.product.kategorie.some((kategoria) => {
+      const nazwaKategorii = kategoria.nazwaKategorii || ""
+      return nazwaKategorii.toLowerCase().includes("books")
+    })
+
+    if (isBook) shippingCost.value += 1.24 * item.ilosc
+  }
+}
+
+const isPostalCodeValid = computed(() => {
+  return /^\d{2}-\d{3}$/.test(checkoutForm.value.postalCode)
+})
+
+const totalSum = computed(() => {
+  let total = cartSum.value
+
+  if (shippingCost.value != null && shippingCost.value > 0)
+    total += shippingCost.value
+
+  if (discount.value != null && discount.value > 0) total -= discount.value
+
+  return total.toFixed(2)
+})
+
+const selectAddress = (addr) => {
+  addressForm.value = addr
+  addressQuery.value = `${addr.ulica} ${addr.numerBudynku}${addr.numerLokalu ? "/" + addr.numerLokalu : ""}, ${addr.miasto}`
+  showAddressDropdown.value = false
+}
+
+const filteredAddresses = computed(() => {
+  const query = addressQuery.value.toLowerCase().trim()
+  if (!query) return addresses.value
+  return addresses.value.filter((addr) =>
+    `${addr.ulica} ${addr.miasto} ${addr.kodPocztowy}`
+      .toLowerCase()
+      .includes(query),
+  )
+})
+
 const handleUpdate = async (product, delta) => {
   await updateQuantity(product.idProduktu, delta, showAlert)
 }
@@ -42,8 +150,10 @@ const handleClear = () => {
 const handleRemove = (id) => {
   removeFromCart(id, showAlert)
 }
-
-onMounted(loadCart)
+onMounted(async () => {
+  await loadCart()
+  await loadAddresses()
+})
 </script>
 
 <template>
@@ -124,7 +234,6 @@ onMounted(loadCart)
           </div>
 
           <div class="cart-actions">
-            <!---- ><button class="update-btn">Update Cart</button> -->
             <button class="clear-btn" @click="handleClear">Clear Cart</button>
           </div>
         </div>
@@ -136,23 +245,139 @@ onMounted(loadCart)
               <span>Subtotals:</span>
               <span>PLN {{ cartSum.toFixed(2) }}</span>
             </div>
+
+            <div v-if="shippingCost" class="summary-row">
+              <span>shipping cost:</span>
+              <span>PLN {{ shippingCost.toFixed(2) }}</span>
+            </div>
+            <div v-if="discount" class="summary-row">
+              <span>discount code:</span>
+              <span>PLN {{ shippingCost.toFixed(2) }}</span>
+            </div>
             <div class="summary-row total-row">
               <span>Totals:</span>
-              <span>PLN {{ (cartSum + shippingCost).toFixed(2) }}</span>
+              <span>PLN {{ totalSum }}</span>
             </div>
+
             <p class="shipping-info">
               <i class="fa-solid fa-circle-check"></i> Shipping & taxes
               calculated at checkout
             </p>
-            <button class="checkout-btn">Proceed To Checkout</button>
+            <button class="checkout-btn" @click="showCheckout = true">
+              Proceed To Checkout
+            </button>
           </div>
 
           <h3 class="section-title text-center mt-4">Calculate Shipping</h3>
           <div class="shipping-card">
-            <input type="text" placeholder="Country" class="shipping-input">
-            <input type="text" placeholder="City / State" class="shipping-input">
-            <input type="text" placeholder="Postal Code" class="shipping-input">
-            <button class="calc-btn">Calculate Shipping</button>
+            <label class="delivery-label">Delivery Method</label>
+
+            <DeliverySelection
+              v-model="selectedDelivery"
+              v-model:is-local-delivery="isLocalDelivery"
+              variant="list"
+            />
+            <hr v-if="!isLocalDelivery" class="divider-line" />
+
+            <div
+              v-if="!isLocalDelivery && hasMoreThanOneAdress"
+              class="form-group address-dropdown-container mb-3"
+            >
+              <label class="form-label">Choose from saved addresses</label>
+              <div class="combobox-wrapper">
+                <input
+                  type="text"
+                  v-model="addressQuery"
+                  placeholder="Search or select address..."
+                  autocomplete="one-time-code"
+                  name="custom-address-lookup"
+                  @focus="showAddressDropdown = true"
+                  @blur="showAddressDropdown = false"
+                  class="shipping-input"
+                />
+                <ul
+                  v-if="showAddressDropdown && filteredAddresses.length"
+                  class="dropdown-list"
+                >
+                  <li
+                    v-for="addr in filteredAddresses"
+                    :key="addr.idAdresu"
+                    @mousedown.prevent="selectAddress(addr)"
+                  >
+                    {{ addr.ulica }} {{ addr.numerBudynku
+                    }}{{ addr.numerLokalu ? "/" + addr.numerLokalu : "" }},
+                    {{ addr.kodPocztowy }} {{ addr.miasto }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div v-if="!isLocalDelivery" class="address-fields-form">
+              <div class="form-group mb-2">
+                <label class="form-label">Street</label>
+                <input
+                  type="text"
+                  v-model="addressForm.ulica"
+                  placeholder="Street"
+                  class="shipping-input"
+                />
+              </div>
+
+              <div class="row-fields mb-2">
+                <div class="form-group flex-1">
+                  <label class="form-label">Building No.</label>
+                  <input
+                    type="text"
+                    v-model="addressForm.numerBudynku"
+                    placeholder="Building No."
+                    class="shipping-input"
+                  />
+                </div>
+                <div class="form-group flex-1">
+                  <label class="form-label">Apt No.</label>
+                  <input
+                    type="text"
+                    v-model="addressForm.numerLokalu"
+                    placeholder="Apt No. (optional)"
+                    class="shipping-input"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group mb-2">
+                <label class="form-label">Postal Code</label>
+                <input
+                  type="text"
+                  v-model="addressForm.kodPocztowy"
+                  placeholder="Postal Code"
+                  class="shipping-input"
+                />
+                <span
+                  v-if="calculateShippingFlag && !isPostalCodeValid"
+                  class="error-text"
+                >
+                  Postal code must be in 00-000 format.
+                </span>
+              </div>
+
+              <div class="form-group mb-3">
+                <label class="form-label">City</label>
+                <input
+                  type="text"
+                  v-model="addressForm.miasto"
+                  placeholder="City"
+                  class="shipping-input"
+                />
+              </div>
+            </div>
+
+            <button
+              v-if="!isLocalDelivery"
+              class="calc-btn"
+              v-on:click="calculateShipping"
+            >
+              Calculate Shipping
+            </button>
           </div>
         </div>
       </div>
@@ -169,9 +394,122 @@ onMounted(loadCart)
       </div>
     </div>
   </div>
+  <Checkout
+    :show="showCheckout"
+    v-model:selectedDelivery="selectedDelivery"
+    :prefilledAddress="addressForm"
+    :shippingCost="shippingCost"
+    @close="showCheckout = false"
+    @order-placed="loadCart"
+  />
 </template>
 
 <style scoped>
+.address-dropdown-container {
+  text-align: left;
+}
+
+.combobox-wrapper {
+  position: relative;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 180px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid #dcdcdc;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(21, 14, 36, 0.08);
+  z-index: 99;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dropdown-list li {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #150e24;
+  text-align: left;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.dropdown-list li:hover {
+  background-color: #f0f2fe;
+  color: #3f509e;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a405c;
+  margin-bottom: 4px;
+  text-align: left;
+}
+
+.row-fields {
+  display: flex;
+  gap: 1rem;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.divider-line {
+  border: 0;
+  border-top: 1px solid #eae8f5;
+  margin: 1.5rem 0;
+}
+
+.error-text {
+  font-size: 0.75rem;
+  color: #e03a5b;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+.delivery-method-group {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  margin: 15px 0;
+}
+
+.delivery-select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e8e6f1;
+  border-radius: 4px;
+  background-color: white;
+  color: #151875;
+  font-weight: 600;
+  font-size: 14px;
+  outline: none;
+  margin-top: 5px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.delivery-select:focus {
+  border-color: #3f509e;
+}
+.delivery-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #151875;
+  margin-bottom: 10px;
+}
+
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -226,186 +564,188 @@ onMounted(loadCart)
 }
 
 .table-container {
-   background: white; 
-   border-radius: 8px; 
+  background: white;
+  border-radius: 8px;
 }
 
-.cart-table { 
-   width: 100%; 
-   border-collapse: collapse; 
+.cart-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.cart-table th { 
-   text-align: left; 
-   padding: 20px; 
-   color: #151875; 
-   border-bottom: 2px solid #f6f5ff; 
+.cart-table th {
+  text-align: left;
+  padding: 20px;
+  color: #151875;
+  border-bottom: 2px solid #f6f5ff;
 }
 
-.cart-table td { 
-   padding: 30px 20px; 
-   border-bottom: 1px solid #f6f5ff; 
+.cart-table td {
+  padding: 30px 20px;
+  border-bottom: 1px solid #f6f5ff;
 }
 
-.product-info { 
-   display: flex; 
-   align-items: center; 
-   gap: 15px; 
+.product-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
-.img-placeholder { 
-   width: 80px; 
-   height: 80px; 
-   background-color: #C4C4C4; 
-   border-radius: 4px; 
-   position: relative; 
+.img-placeholder {
+  width: 80px;
+  height: 80px;
+  background-color: #c4c4c4;
+  border-radius: 4px;
+  position: relative;
 }
 
-.remove-btn { 
-   position: absolute; 
-   top: -8px; 
-   right: -8px; 
-   background: #000; 
-   color: #fff; 
-   border: none; 
-   border-radius: 50%; 
-   width: 20px; 
-   height: 20px; 
-   cursor: pointer; 
-   display: flex; 
-   align-items: center; 
-   justify-content: center; 
-   font-size: 14px; 
+.remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
 }
 
-.p-name { 
-   margin: 0; 
-   font-weight: 700; 
-   font-size: 16px; 
+.p-name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 16px;
 }
 
-.p-specs { 
-   margin: 0; 
-   font-size: 12px; 
-   color: #A1A8C1; 
+.p-specs {
+  margin: 0;
+  font-size: 12px;
+  color: #a1a8c1;
 }
 
-.quantity-control { 
-   display: flex; 
-   align-items: center; 
-   background: #F0EFF2; 
-   width: fit-content; 
-   border-radius: 2px; 
+.quantity-control {
+  display: flex;
+  align-items: center;
+  background: #f0eff2;
+  width: fit-content;
+  border-radius: 2px;
 }
 
-.quantity-control button { 
-   border: none; 
-   background: none; 
-   padding: 5px 12px; 
-   cursor: pointer; 
-   color: #BEBFC2; 
-   font-size: 18px; 
+.quantity-control button {
+  border: none;
+  background: none;
+  padding: 5px 12px;
+  cursor: pointer;
+  color: #bebfc2;
+  font-size: 18px;
 }
 
-.quantity-control span { 
-   padding: 0 10px; 
-   font-size: 14px; 
+.quantity-control span {
+  padding: 0 10px;
+  font-size: 14px;
 }
 
-.cart-actions { 
-   display: flex; 
-   justify-content: space-between; 
-   margin-top: 40px; 
+.cart-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 40px;
 }
 
-.update-btn, .clear-btn { 
-   background-color: #3f509e;; 
-   color: white; 
-   border: none; 
-   padding: 12px 30px; 
-   border-radius: 3px; 
-   font-weight: 600; 
-   cursor: pointer; 
+.update-btn,
+.clear-btn {
+  background-color: #3f509e;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 3px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.summary-section h3 { 
-   margin-bottom: 30px; 
-   color: #151875; 
+.summary-section h3 {
+  margin-bottom: 30px;
+  color: #151875;
 }
 
-.summary-card, .shipping-card { 
-   background-color: #F4F4FC; 
-   padding: 30px; 
-   border-radius: 3px; 
+.summary-card,
+.shipping-card {
+  background-color: #f4f4fc;
+  padding: 30px;
+  border-radius: 3px;
 }
 
-.summary-row { 
-   display: flex; 
-   justify-content: space-between; 
-   padding: 15px 0; 
-   border-bottom: 2px solid #E8E6F1; 
-   color: #151875; 
-   font-weight: 600; 
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  color: #151875;
+  font-weight: 600;
 }
 
-.total-row { 
-   border-bottom: none; 
-   font-size: 18px; 
-   margin-bottom: 20px; 
+.total-row {
+  border-top: 2px solid #e8e6f1;
+  border-bottom: none;
+  font-size: 18px;
+  margin-bottom: 20px;
 }
 
-.shipping-info { 
-   font-size: 12px; 
-   color: #8A8FB9; 
-   margin: 20px 0; 
-   display: flex; 
-   align-items: center; 
-   gap: 8px; 
+.shipping-info {
+  font-size: 12px;
+  color: #8a8fb9;
+  margin: 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.shipping-info i { 
-   color: #19D16F; 
+.shipping-info i {
+  color: #19d16f;
 }
 
-.checkout-btn { 
-   background-color: #19D16F; 
-   color: white; 
-   border: none; 
-   width: 100%; 
-   padding: 15px; 
-   border-radius: 3px; 
-   font-weight: 700; 
-   cursor: pointer; 
+.checkout-btn {
+  background-color: #19d16f;
+  color: white;
+  border: none;
+  width: 100%;
+  padding: 15px;
+  border-radius: 3px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.shipping-input { 
-   width: 100%; 
-   background: transparent; 
-   border: none; 
-   border-bottom: 2px solid #E8E6F1; 
-   padding: 12px 0; 
-   margin-bottom: 20px; 
-   outline: none; 
-   color: #151875; 
+.shipping-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid #e8e6f1;
+  padding: 12px 0;
+  margin-bottom: 5px;
+  outline: none;
+  color: #151875;
 }
 
-.calc-btn { 
-   background-color: #3f509e;; 
-   color: white; 
-   border: none; 
-   padding: 12px 25px; 
-   border-radius: 3px; 
-   font-weight: 600; 
-   cursor: pointer; 
-   margin-top: 10px; 
+.calc-btn {
+  background-color: #3f509e;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 3px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
 }
 
-.text-center { 
-   text-align: center; 
+.text-center {
+  text-align: center;
 }
 
-.mt-4 { 
-   margin-top: 40px; 
+.mt-4 {
+  margin-top: 40px;
 }
 
 .empty-cart {
@@ -486,8 +826,8 @@ onMounted(loadCart)
   }
 }
 @media (max-width: 1100px) {
-  .cart-grid { 
-     grid-template-columns: 1fr; 
+  .cart-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
