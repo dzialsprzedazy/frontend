@@ -83,8 +83,8 @@ onMounted(() => {
           <div class="product-card" v-for="item in wishlistItems" :key="item.productId">
             <div class="product-image-box">
               <router-link :to="`/products/${item.productId}`" class="image-link">
-                <i class="fa-regular fa-image" v-if="!item.imageUrl"></i>
-                <img :src="item.imageUrl" alt="Product Image" v-else style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" />
+                <img :src="item.zdjecie" alt="Product Image" v-if="item.zdjecie" class="product-image" />
+                <i class="fa-regular fa-image" v-else></i>
               </router-link>
             </div>
             
@@ -132,60 +132,6 @@ onMounted(() => {
 
 <style scoped>
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css");
-
-.image-link {
-  display: block;
-  width: 100%;
-  height: 100%;
-  color: inherit;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.product-title-link {
-  text-decoration: none;
-  color: inherit;
-  transition: color 0.2s ease;
-}
-
-.product-title-link:hover {
-  color: #7d4cd4;
-}
-
-.page-fade-enter-active,
-.page-fade-leave-active {
-  transition:
-    opacity 0.4s ease,
-    transform 0.4s ease;
-}
-
-.page-fade-enter-from {
-  opacity: 0;
-  transform: translateY(15px);
-}
-
-.page-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-15px);
-}
-
-.status-message.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  font-size: 1.1rem;
-  color: #7d4cd4;
-  padding: 8rem 0;
-  font-weight: 600;
-}
-
-.status-message.loading i {
-  font-size: 2.2rem;
-}
 
 .page-wrapper {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -239,9 +185,25 @@ onMounted(() => {
   align-items: center;
 }
 
+.status-message.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 1.1rem;
+  color: #7d4cd4;
+  padding: 8rem 0;
+  font-weight: 600;
+}
+
+.status-message.loading i {
+  font-size: 2.2rem;
+}
+
 .wishlist-items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 2rem;
   width: 100%;
 }
@@ -250,7 +212,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
-  border-radius: 16px;
+  border-radius: 20px;
   box-shadow: 0 8px 25px rgba(21, 24, 117, 0.03);
   overflow: hidden;
   transition: all 0.3s ease;
@@ -267,7 +229,7 @@ onMounted(() => {
 
 .product-image-box {
   width: 100%;
-  aspect-ratio: 1/1;
+  aspect-ratio: 5 / 7;
   background-color: #f8f9fc;
   border-radius: 12px;
   display: flex;
@@ -275,12 +237,24 @@ onMounted(() => {
   justify-content: center;
   color: #dcdcdc;
   font-size: 3.5rem;
-  transition: background-color 0.3s ease;
+  overflow: hidden;
 }
 
-.product-card:hover .product-image-box {
-  background-color: #f3f0ff;
-  color: #d5ccf8;
+.image-link {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 8px;
 }
 
 .product-card-info {
@@ -307,6 +281,16 @@ onMounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.product-title-link {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.2s ease;
+}
+
+.product-title-link:hover {
+  color: #7d4cd4;
 }
 
 .product-author {
@@ -415,6 +399,23 @@ onMounted(() => {
   color: #8a8fb9;
   margin: 0;
   font-size: 1rem;
+}
+
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(15px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-15px);
 }
 
 @media (max-width: 768px) {

@@ -29,7 +29,6 @@ const sortBy = ref("default")
 const wishlistProductIds = ref(new Set())
 const isWishlistActionLoading = ref(null)
 
-// LISTENING TO THE URL ADDRESS: Works immediately after entering the page, and also when update the search in Top.vue while already on the products page.
 watch(
   () => route.query.search,
   (newSearch) => {
@@ -334,7 +333,13 @@ const handleAdd = async (product) => {
               :to="`/products/${item.idProduktu}`"
               class="image-link"
             >
-              <i class="fa-regular fa-image"></i>
+              <img
+                v-if="item.zdjecie"
+                :src="item.zdjecie"
+                :alt="item.nazwaProduktu"
+                class="product-image"
+              />
+              <i v-else class="fa-regular fa-image"></i>
             </router-link>
           </div>
 
@@ -720,8 +725,8 @@ const handleAdd = async (product) => {
 }
 
 .product-image-box {
-  width: 220px;
-  height: 220px;
+  width: 200px;
+  height: 300px;
   background-color: #f8f9fc;
   border-radius: 12px;
   display: flex;
@@ -730,6 +735,24 @@ const handleAdd = async (product) => {
   color: #dcdcdc;
   font-size: 4rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.image-link {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 8px;
 }
 
 .product-info {
@@ -928,16 +951,6 @@ const handleAdd = async (product) => {
   color: #7d4cd4;
 }
 
-.image-link {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: inherit;
-  text-decoration: none;
-}
-
 @media (max-width: 1024px) {
   .shop-layout {
     grid-template-columns: 240px 1fr;
@@ -966,7 +979,7 @@ const handleAdd = async (product) => {
 
   .product-image-box {
     width: 100%;
-    height: 250px;
+    height: 350px;
   }
 
   .product-header {

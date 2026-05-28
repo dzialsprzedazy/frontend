@@ -1,13 +1,13 @@
 <script setup>
-import { ref, onMounted, watch } from "vue"
+import { ref, onMounted, watch, computed } from "vue"
 import { useRoute } from "vue-router"
 import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 import { addToCart } from "@/components/Cart/cartLogic.js"
-const currentTab = ref("Description")
 
+const currentTab = ref("Description")
 const route = useRoute()
 const { showAlert } = useAlerts()
 
@@ -17,14 +17,22 @@ const fetchError = ref(null)
 const isInWishlist = ref(false)
 const isWishlistActionLoading = ref(false)
 
+const stockClass = computed(() => {
+  if (!product.value) return ""
+  const stock = product.value.stanMagazynowy
+  if (stock > 10) return "stock-high"
+  if (stock > 0) return "stock-medium"
+  return "stock-empty"
+})
+
 const loadProduct = async (idFromRoute = null) => {
   window.scrollTo(0, 0)
-
   isLoading.value = true
   fetchError.value = null
   product.value = null
   currentTab.value = "Description"
   isInWishlist.value = false
+
   try {
     const id = idFromRoute || route.params.id
     if (!id) return
@@ -105,6 +113,7 @@ watch(
     }
   },
 )
+
 const handleAdd = async () => {
   addToCart(product.value, showAlert)
 }
@@ -135,24 +144,25 @@ onMounted(() => {
         >
           <section class="product-main">
             <div class="product-gallery">
-              <div class="thumbnails">
-                <div class="thumb-placeholder">
-                  <i class="fa-regular fa-image"></i>
-                </div>
-                <div class="thumb-placeholder">
-                  <i class="fa-regular fa-image"></i>
-                </div>
-                <div class="thumb-placeholder">
-                  <i class="fa-regular fa-image"></i>
-                </div>
-              </div>
               <div class="main-image-placeholder">
-                <i class="fa-regular fa-image"></i>
+                <img
+                  v-if="product.zdjecie"
+                  :src="product.zdjecie"
+                  :alt="product.nazwaProduktu"
+                  class="main-product-image"
+                />
+                <i v-else class="fa-regular fa-image"></i>
               </div>
             </div>
 
             <div class="product-info-section">
-              <h1 class="product-title">{{ product.nazwaProduktu }}</h1>
+              <div class="title-and-stock">
+                <h1 class="product-title">{{ product.nazwaProduktu }}</h1>
+                <div class="availability-badge" :class="stockClass">
+                  <i class="fa-solid fa-layer-group"></i>
+                  Dostępność: {{ product.stanMagazynowy }}
+                </div>
+              </div>
 
               <div class="rating">
                 <div class="stars-container">
@@ -180,7 +190,7 @@ onMounted(() => {
               </p>
 
               <div class="product-actions">
-                <button class="cart-btn" v-on:click="handleAdd">
+                <button class="cart-btn" v-on:click="handleAdd" :disabled="product.stanMagazynowy === 0">
                   <i class="fa-solid fa-cart-shopping"></i> Add To Cart
                 </button>
                 <button
@@ -335,7 +345,13 @@ onMounted(() => {
                     :to="`/products/${rel.idProduktu}`"
                     class="image-link"
                   >
-                    <i class="fa-regular fa-image"></i>
+                    <img
+                      v-if="rel.zdjecie"
+                      :src="rel.zdjecie"
+                      :alt="rel.nazwaProduktu"
+                      class="product-image"
+                    />
+                    <i v-else class="fa-regular fa-image"></i>
                   </router-link>
                 </div>
 
@@ -462,55 +478,29 @@ onMounted(() => {
 
 .product-gallery {
   display: flex;
-  gap: 1.5rem;
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-}
-
-.thumbnails {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.thumb-placeholder {
-  width: 80px;
-  height: 80px;
-  background: #f8f9fc;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
-  color: #dcdcdc;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.thumb-placeholder:hover {
-  border-color: #7d4cd4;
-  color: #7d4cd4;
-  background: #f3f0ff;
-  transform: translateY(-2px);
+  flex: 0 0 auto;
 }
 
 .main-image-placeholder {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  background: #f8f9fc;
+  width: 320px;
+  height: 480px;
+  background-color: #f8f9fc;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 5rem;
   color: #dcdcdc;
-  border-radius: 16px;
-  aspect-ratio: 1/1;
-  border: 1px solid #eae8f5;
   overflow: hidden;
+  flex-shrink: 0;
+}
+
+.main-product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 12px;
 }
 
 .product-info-section {
@@ -522,14 +512,51 @@ onMounted(() => {
   justify-content: center;
 }
 
+.title-and-stock {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 0.8rem;
+}
+
 .product-title {
   color: #151875;
   font-size: 2.1rem;
   font-weight: 800;
-  margin: 0 0 0.8rem 0;
+  margin: 0;
   letter-spacing: -0.5px;
   line-height: 1.2;
   word-wrap: break-word;
+}
+
+.availability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.stock-high {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.stock-medium {
+  background-color: #fff3e0;
+  color: #ef6c00;
+  border: 1px solid #ffe0b2;
+}
+
+.stock-empty {
+  background-color: #ffebee;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
 }
 
 .rating {
@@ -610,11 +637,18 @@ onMounted(() => {
   box-shadow: 0 4px 15px rgba(63, 80, 158, 0.2);
 }
 
-.cart-btn:hover {
+.cart-btn:hover:not(:disabled) {
   background-color: #2e3b75;
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(63, 80, 158, 0.3);
 }
+
+.cart-btn:disabled {
+  background-color: #c2c6e2;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .icon-btn .fa-solid.fa-heart {
   color: #fb2e86;
 }
@@ -923,14 +957,15 @@ onMounted(() => {
 
 .product-image-box {
   width: 100%;
-  aspect-ratio: 1/1;
+  aspect-ratio: 2 / 3;
   background-color: #f8f9fc;
-  border-radius: 16px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #dcdcdc;
   font-size: 3.5rem;
+  overflow: hidden;
   transition: background-color 0.3s ease;
 }
 
@@ -947,6 +982,13 @@ onMounted(() => {
   justify-content: center;
   color: inherit;
   text-decoration: none;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 8px;
 }
 
 .product-card-info {
@@ -1015,21 +1057,13 @@ onMounted(() => {
 @media (max-width: 960px) {
   .product-main {
     flex-direction: column;
+    align-items: center;
     gap: 3rem;
   }
-
-  .product-gallery {
-    flex-direction: column-reverse;
-  }
-
-  .thumbnails {
-    flex-direction: row;
-    justify-content: center;
-  }
-
-  .thumb-placeholder {
-    width: 70px;
-    height: 70px;
+  
+  .title-and-stock {
+    flex-direction: column;
+    gap: 1rem;
   }
 }
 
@@ -1062,6 +1096,12 @@ onMounted(() => {
 
   .review-date {
     margin-left: 0;
+  }
+
+  .main-image-placeholder {
+    width: 100%;
+    max-width: 280px;
+    height: 420px;
   }
 }
 </style>

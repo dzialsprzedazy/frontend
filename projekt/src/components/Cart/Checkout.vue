@@ -157,7 +157,7 @@ const verifyAndSetAddress = () => {
 const handlePlaceOrder = async () => {
   placedOrderFlag.value = true
   if (isFormInvalid.value) {
-    console.warn("fill in all highlighted fields before proceeding")
+    console.warn("Fill in all highlighted fields before proceeding")
     return
   }
 
@@ -187,7 +187,7 @@ const handlePlaceOrder = async () => {
     }
     console.log(orderPayload)
 
-    showAlert({ type: "success", message: "Order placed successfully!" })
+    // showAlert({ type: "success", message: "Order placed successfully!" }) // uncomment when ready
     clearCart()
     emit("order-placed")
     emit("close")
@@ -197,6 +197,7 @@ const handlePlaceOrder = async () => {
     isSubmitting.value = false
   }
 }
+
 watch(
   [() => props.show, () => props.prefilledAddress],
   ([isShown, address]) => {
@@ -215,6 +216,7 @@ watch(
   },
   { deep: true, immediate: true },
 )
+
 onMounted(() => {
   loadUserProfile()
   verifyAndSetAddress()
@@ -243,13 +245,14 @@ onMounted(() => {
           </div>
 
           <div v-else class="checkout-flow-form">
+            
             <div class="checkout-section mb-4">
               <h3 class="section-subtitle">1. Personal Information</h3>
-              <p class="section-hint mb-3">
-                Required for order verification and notification.
+              <p class="section-hint mb-4">
+                Required for order verification and notifications.
               </p>
 
-              <div class="row-fields mb-2">
+              <div class="row-fields mb-3">
                 <div class="form-group flex-1">
                   <label class="form-label"
                     >First Name <span class="required">*</span></label
@@ -267,7 +270,7 @@ onMounted(() => {
                   <span
                     v-if="placedOrderFlag && !checkoutForm.firstName"
                     class="error-text"
-                    >First name is required</span
+                    >First Name is required</span
                   >
                 </div>
                 <div class="form-group flex-1">
@@ -287,7 +290,7 @@ onMounted(() => {
                   <span
                     v-if="placedOrderFlag && !checkoutForm.lastName"
                     class="error-text"
-                    >Last name is required</span
+                    >Last Name is required</span
                   >
                 </div>
               </div>
@@ -309,7 +312,7 @@ onMounted(() => {
                   <span
                     v-if="placedOrderFlag && !checkoutForm.email"
                     class="error-text"
-                    >Email is required</span
+                    >Email Address is required</span
                   >
                 </div>
                 <div class="form-group flex-1">
@@ -328,30 +331,34 @@ onMounted(() => {
                   <span
                     v-if="placedOrderFlag && !checkoutForm.phone"
                     class="error-text"
-                    >Phone number is required</span
+                    >Phone Number is required</span
                   >
                 </div>
               </div>
             </div>
+
             <div class="checkout-section mb-4">
-              <h3 class="section-subtitle">2. delivery Method</h3>
-              <DeliverySelection
-                v-model="selectedDelivery"
-                v-model:is-local-delivery="isLocalDelivery"
-                variant="grid"
-              />
+              <h3 class="section-subtitle">2. Delivery Method</h3>
+              <div class="mt-3">
+                <DeliverySelection
+                  v-model="selectedDelivery"
+                  v-model:is-local-delivery="isLocalDelivery"
+                  variant="grid"
+                />
+              </div>
             </div>
+
             <div class="checkout-section mb-4">
               <h3 class="section-subtitle">3. Shipping Address</h3>
-              <p v-if="hasAddress" class="section-hint success-hint mb-3">
+              
+              <p v-if="hasAddress" class="section-hint success-hint mb-4 mt-2">
                 ✓ Using address selected during delivery cost calculation.
               </p>
-
-              <p v-else class="section-hint mb-3">
+              <p v-else class="section-hint mb-4 mt-2">
                 Please fill in your delivery details below.
               </p>
 
-              <div class="form-group mb-2">
+              <div class="form-group mb-3">
                 <label class="form-label"
                   >Street <span class="required">*</span></label
                 >
@@ -367,11 +374,11 @@ onMounted(() => {
                 <span
                   v-if="placedOrderFlag && !checkoutForm.street"
                   class="error-text"
-                  >Street name is required</span
+                  >Street is required</span
                 >
               </div>
 
-              <div class="row-fields mb-2">
+              <div class="row-fields mb-3">
                 <div class="form-group flex-1">
                   <label class="form-label"
                     >Building No. <span class="required">*</span></label
@@ -389,7 +396,7 @@ onMounted(() => {
                   <span
                     v-if="placedOrderFlag && !checkoutForm.buildingNo"
                     class="error-text"
-                    >Required</span
+                    >Building No. is required</span
                   >
                 </div>
                 <div class="form-group flex-1">
@@ -421,13 +428,13 @@ onMounted(() => {
                     v-if="placedOrderFlag && !checkoutForm.postalCode"
                     class="error-text"
                   >
-                    Postal code is required.
+                    Postal Code is required.
                   </span>
                   <span
                     v-else-if="placedOrderFlag && !isPostalCodeValid"
                     class="error-text"
                   >
-                    Postal code must be in 00-000 format.
+                    Postal Code must be in 00-000 format.
                   </span>
                 </div>
                 <div class="form-group flex-1">
@@ -446,21 +453,21 @@ onMounted(() => {
                   <span
                     v-if="placedOrderFlag && !checkoutForm.city"
                     class="error-text"
-                    >City name is required</span
+                    >City is required</span
                   >
                 </div>
               </div>
             </div>
 
-            <div class="order-summary-box p-3 mb-2">
-              <h4 class="summary-title mb-2">Order Summary</h4>
+            <div class="order-summary-box p-3 mt-4 mb-2">
+              <h4 class="summary-title mb-3">Order Summary</h4>
               <div class="summary-line">
                 <span>Items Subtotal:</span>
                 <span class="fw-bold">PLN {{ cartSum.toFixed(2) }}</span>
               </div>
               <div class="summary-line">
                 <span>Shipping Cost:</span>
-                <span>PLN {{ shippingCost.toFixed(2) }}</span>
+                <span class="fw-bold">PLN {{ shippingCost.toFixed(2) }}</span>
               </div>
               <hr class="summary-divider" />
               <div class="summary-line total-line">
@@ -468,6 +475,7 @@ onMounted(() => {
                 <span class="total-price">PLN {{ totalOrderSum }}</span>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -493,6 +501,19 @@ onMounted(() => {
 </template>
 
 <style scoped>
+
+.mb-2 { margin-bottom: 0.75rem; }
+.mb-3 { margin-bottom: 1.25rem; }
+.mb-4 { margin-bottom: 2rem; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.75rem; }
+.mt-3 { margin-top: 1.25rem; }
+.mt-4 { margin-top: 2rem; }
+.p-3 { padding: 1.5rem; }
+.py-4 { padding-top: 2rem; padding-bottom: 2rem; }
+.text-center { text-align: center; }
+.fw-bold { font-weight: 600; }
+
 .modal-mask {
   position: fixed;
   z-index: 9999;
@@ -550,20 +571,26 @@ onMounted(() => {
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: 1.5rem 2rem; 
   overflow-y: auto;
   background-color: #ffffff;
 }
 
+.checkout-section {
+  background: #ffffff;
+}
+
 .section-subtitle {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   color: #151875;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 0.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #fbfbfe;
 }
 
 .section-hint {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: #8a8fb9;
   margin: 0;
 }
@@ -575,7 +602,7 @@ onMounted(() => {
 
 .row-fields {
   display: flex;
-  gap: 1rem;
+  gap: 1.25rem; 
 }
 
 .flex-1 {
@@ -585,14 +612,13 @@ onMounted(() => {
 .form-group {
   display: flex;
   flex-direction: column;
-  margin-bottom: 0.75rem;
 }
 
 .form-label {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #4a405c;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .required {
@@ -600,13 +626,15 @@ onMounted(() => {
 }
 
 .form-control {
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 1rem; 
   border: 1px solid #eae8f5;
   border-radius: 8px;
   font-size: 0.95rem;
   color: #151875;
   background-color: #fbfbfe;
   transition: all 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .form-control:focus {
@@ -616,7 +644,6 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(63, 80, 158, 0.1);
 }
 
-/* NOWE STYLE DLA PODŚWIETLANIA BŁĘDÓW FORMULARZA */
 .form-control.input-error {
   border-color: #e03a5b !important;
   background-color: #fdf2f4 !important;
@@ -627,9 +654,9 @@ onMounted(() => {
 }
 
 .error-text {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: #e03a5b;
-  margin-top: 0.25rem;
+  margin-top: 0.4rem;
   font-weight: 500;
 }
 
@@ -640,7 +667,6 @@ onMounted(() => {
   border-color: #e1dde6;
 }
 
-/* Karta podsumowania */
 .order-summary-box {
   background-color: #f8f8fd;
   border: 1px dashed #c2c6e2;
@@ -648,7 +674,7 @@ onMounted(() => {
 }
 
 .summary-title {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: #151875;
   font-weight: 700;
 }
@@ -656,29 +682,31 @@ onMounted(() => {
 .summary-line {
   display: flex;
   justify-content: space-between;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #4a405c;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .summary-divider {
   border: 0;
   border-top: 1px solid #eae8f5;
-  margin: 0.6rem 0;
+  margin: 1rem 0;
 }
 
 .total-line {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: #151875;
+  margin-bottom: 0;
 }
 
 .total-price {
   color: #fb2e86;
+  font-size: 1.25rem;
 }
 
 .modal-footer {
-  padding: 1rem 1.5rem;
+  padding: 1.25rem 2rem;
   background-color: #fbfbfe;
   border-top: 1px solid #eae8f5;
   display: flex;
@@ -688,9 +716,9 @@ onMounted(() => {
 
 .btn-primary,
 .btn-secondary {
-  padding: 0.65rem 1.5rem;
+  padding: 0.75rem 1.75rem;
   border-radius: 8px;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -721,7 +749,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Animacja  */
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
@@ -729,5 +756,16 @@ button:disabled {
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
   transform: scale(0.95);
+}
+
+@media (max-width: 600px) {
+  .row-fields {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .modal-body {
+    padding: 1.5rem;
+  }
 }
 </style>
