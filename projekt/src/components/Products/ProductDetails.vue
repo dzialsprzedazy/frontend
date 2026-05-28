@@ -1,13 +1,13 @@
 <script setup>
-import { ref, onMounted, watch } from "vue"
+import { ref, onMounted, watch, computed } from "vue"
 import { useRoute } from "vue-router"
 import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 import { addToCart } from "@/components/Cart/cartLogic.js"
-const currentTab = ref("Description")
 
+const currentTab = ref("Description")
 const route = useRoute()
 const { showAlert } = useAlerts()
 
@@ -17,14 +17,22 @@ const fetchError = ref(null)
 const isInWishlist = ref(false)
 const isWishlistActionLoading = ref(false)
 
+const stockClass = computed(() => {
+  if (!product.value) return ""
+  const stock = product.value.stanMagazynowy
+  if (stock > 10) return "stock-high"
+  if (stock > 0) return "stock-medium"
+  return "stock-empty"
+})
+
 const loadProduct = async (idFromRoute = null) => {
   window.scrollTo(0, 0)
-
   isLoading.value = true
   fetchError.value = null
   product.value = null
   currentTab.value = "Description"
   isInWishlist.value = false
+
   try {
     const id = idFromRoute || route.params.id
     if (!id) return
@@ -105,6 +113,7 @@ watch(
     }
   },
 )
+
 const handleAdd = async () => {
   addToCart(product.value, showAlert)
 }
@@ -147,7 +156,13 @@ onMounted(() => {
             </div>
 
             <div class="product-info-section">
-              <h1 class="product-title">{{ product.nazwaProduktu }}</h1>
+              <div class="title-and-stock">
+                <h1 class="product-title">{{ product.nazwaProduktu }}</h1>
+                <div class="availability-badge" :class="stockClass">
+                  <i class="fa-solid fa-layer-group"></i>
+                  Dostępność: {{ product.stanMagazynowy }}
+                </div>
+              </div>
 
               <div class="rating">
                 <div class="stars-container">
@@ -175,7 +190,7 @@ onMounted(() => {
               </p>
 
               <div class="product-actions">
-                <button class="cart-btn" v-on:click="handleAdd">
+                <button class="cart-btn" v-on:click="handleAdd" :disabled="product.stanMagazynowy === 0">
                   <i class="fa-solid fa-cart-shopping"></i> Add To Cart
                 </button>
                 <button
@@ -497,14 +512,51 @@ onMounted(() => {
   justify-content: center;
 }
 
+.title-and-stock {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 0.8rem;
+}
+
 .product-title {
   color: #151875;
   font-size: 2.1rem;
   font-weight: 800;
-  margin: 0 0 0.8rem 0;
+  margin: 0;
   letter-spacing: -0.5px;
   line-height: 1.2;
   word-wrap: break-word;
+}
+
+.availability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.stock-high {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.stock-medium {
+  background-color: #fff3e0;
+  color: #ef6c00;
+  border: 1px solid #ffe0b2;
+}
+
+.stock-empty {
+  background-color: #ffebee;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
 }
 
 .rating {
@@ -585,10 +637,16 @@ onMounted(() => {
   box-shadow: 0 4px 15px rgba(63, 80, 158, 0.2);
 }
 
-.cart-btn:hover {
+.cart-btn:hover:not(:disabled) {
   background-color: #2e3b75;
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(63, 80, 158, 0.3);
+}
+
+.cart-btn:disabled {
+  background-color: #c2c6e2;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .icon-btn .fa-solid.fa-heart {
@@ -897,7 +955,6 @@ onMounted(() => {
   border-color: #d5ccf8;
 }
 
-/* Style dla zdjęcia w sekcji "Powiązane Produkty" */
 .product-image-box {
   width: 100%;
   aspect-ratio: 2 / 3;
@@ -1002,6 +1059,11 @@ onMounted(() => {
     flex-direction: column;
     align-items: center;
     gap: 3rem;
+  }
+  
+  .title-and-stock {
+    flex-direction: column;
+    gap: 1rem;
   }
 }
 
