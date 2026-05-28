@@ -135,19 +135,14 @@ onMounted(() => {
         >
           <section class="product-main">
             <div class="product-gallery">
-              <div class="thumbnails">
-                <div class="thumb-placeholder">
-                  <i class="fa-regular fa-image"></i>
-                </div>
-                <div class="thumb-placeholder">
-                  <i class="fa-regular fa-image"></i>
-                </div>
-                <div class="thumb-placeholder">
-                  <i class="fa-regular fa-image"></i>
-                </div>
-              </div>
               <div class="main-image-placeholder">
-                <i class="fa-regular fa-image"></i>
+                <img
+                  v-if="product.zdjecie"
+                  :src="product.zdjecie"
+                  :alt="product.nazwaProduktu"
+                  class="main-product-image"
+                />
+                <i v-else class="fa-regular fa-image"></i>
               </div>
             </div>
 
@@ -335,7 +330,13 @@ onMounted(() => {
                     :to="`/products/${rel.idProduktu}`"
                     class="image-link"
                   >
-                    <i class="fa-regular fa-image"></i>
+                    <img
+                      v-if="rel.zdjecie"
+                      :src="rel.zdjecie"
+                      :alt="rel.nazwaProduktu"
+                      class="product-image"
+                    />
+                    <i v-else class="fa-regular fa-image"></i>
                   </router-link>
                 </div>
 
@@ -462,55 +463,29 @@ onMounted(() => {
 
 .product-gallery {
   display: flex;
-  gap: 1.5rem;
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-}
-
-.thumbnails {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.thumb-placeholder {
-  width: 80px;
-  height: 80px;
-  background: #f8f9fc;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
-  color: #dcdcdc;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.thumb-placeholder:hover {
-  border-color: #7d4cd4;
-  color: #7d4cd4;
-  background: #f3f0ff;
-  transform: translateY(-2px);
+  flex: 0 0 auto;
 }
 
 .main-image-placeholder {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  background: #f8f9fc;
+  width: 320px;
+  height: 480px;
+  background-color: #f8f9fc;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 5rem;
   color: #dcdcdc;
-  border-radius: 16px;
-  aspect-ratio: 1/1;
-  border: 1px solid #eae8f5;
   overflow: hidden;
+  flex-shrink: 0;
+}
+
+.main-product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 12px;
 }
 
 .product-info-section {
@@ -615,6 +590,7 @@ onMounted(() => {
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(63, 80, 158, 0.3);
 }
+
 .icon-btn .fa-solid.fa-heart {
   color: #fb2e86;
 }
@@ -921,16 +897,18 @@ onMounted(() => {
   border-color: #d5ccf8;
 }
 
+/* Style dla zdjęcia w sekcji "Powiązane Produkty" */
 .product-image-box {
   width: 100%;
-  aspect-ratio: 1/1;
+  aspect-ratio: 2 / 3;
   background-color: #f8f9fc;
-  border-radius: 16px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #dcdcdc;
   font-size: 3.5rem;
+  overflow: hidden;
   transition: background-color 0.3s ease;
 }
 
@@ -947,6 +925,13 @@ onMounted(() => {
   justify-content: center;
   color: inherit;
   text-decoration: none;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 8px;
 }
 
 .product-card-info {
@@ -1015,21 +1000,8 @@ onMounted(() => {
 @media (max-width: 960px) {
   .product-main {
     flex-direction: column;
+    align-items: center;
     gap: 3rem;
-  }
-
-  .product-gallery {
-    flex-direction: column-reverse;
-  }
-
-  .thumbnails {
-    flex-direction: row;
-    justify-content: center;
-  }
-
-  .thumb-placeholder {
-    width: 70px;
-    height: 70px;
   }
 }
 
@@ -1062,6 +1034,12 @@ onMounted(() => {
 
   .review-date {
     margin-left: 0;
+  }
+
+  .main-image-placeholder {
+    width: 100%;
+    max-width: 280px;
+    height: 420px;
   }
 }
 </style>
