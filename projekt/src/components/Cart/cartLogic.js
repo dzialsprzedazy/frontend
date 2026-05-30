@@ -1,4 +1,4 @@
-import { ref, computed } from "vue"
+import { ref, computed, watch } from "vue"
 import api from "@/services/axios.js"
 
 const STORAGE_KEY = "shopping_cart"
@@ -8,6 +8,61 @@ const userId = JSON.parse(localStorage.getItem("user"))?.id
 export const cartItems = ref([])
 const cartId = ref(null)
 
+export const isLocalDelivery = ref(false)
+export const selectedDelivery = ref({
+  id: 0,
+  name: "",
+  price: 0.0,
+  icon: "fa-solid fa-truck",
+})
+export const addressForm = ref({
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  street: "",
+  buildingNo: "",
+  aptNo: "",
+  postalCode: "",
+  city: "",
+})
+export const shippingCost = computed(() => {
+  const address = addressForm.value
+  const isCartEmpty = !cartItems.value || cartItems.value.length === 0
+  const isLocal = selectedDelivery.value.id === 3
+  const isPostalValid = /^\d{2}-\d{3}$/.test(address.postalCode)
+
+  if (
+    isCartEmpty ||
+    isLocal ||
+    address.city === "" ||
+    address.street === "" ||
+    address.buildingNo === "" ||
+    !isPostalValid
+  ) {
+    return 0
+  }
+
+  let cost = selectedDelivery.value ? selectedDelivery.value.price : 0
+
+  for (const item of cartItems.value) {
+    if (!item.product || !item.product.kategorie) continue
+
+    const isBook = item.product.kategorie.some((kategoria) => {
+      const nazwaKategorii = kategoria.nazwaKategorii || kategoria.nazwa || ""
+      return (
+        nazwaKategorii.toLowerCase().includes("books") ||
+        nazwaKategorii.toLowerCase().includes("book")
+      )
+    })
+
+    if (isBook) {
+      cost += 1.24 * (item.ilosc || 1)
+    }
+  }
+
+  return cost
+})
 const syncLocalStorage = () => {
   if (!token) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems.value))
@@ -36,6 +91,7 @@ const createRemoteCart = async () => {
 
   return await api.post("cart", payload)
 }
+
 export const getCart = async () => {
   if (!token) {
     const localData = localStorage.getItem(STORAGE_KEY)
@@ -56,39 +112,41 @@ export const getCart = async () => {
   }
 }
 
-export const updateQuantity = async (productId, delta, showAlert) => {
-  if (!productId) return false
+export const updateQuantity = async (product, delta, showAlert) => {
+  if (!product) return false
 
   try {
-    const { data: product } = await api.get(`products/${productId}`)
-
-    const item = cartItems.value.find((i) => i.idProduktu === productId)
+    const item = cartItems.value.find(
+      (i) => i.idProduktu === product.idProduktu,
+    )
     const currentQty = item ? item.ilosc : 0
     const newQty = currentQty + delta
-
-    if (newQty > product.stanMagazynowy) {
+    const isValid = await isItemQuantityValid(product.idProduktu, newQty)
+    if (!isValid) {
       showAlert({
         type: "warning",
-        message: `Max stock: ${product.stanMagazynowy}`,
-        duration: 800
+        message: `Max stock`,
+        duration: 800,
       })
       return false
     }
-
-    if (newQty <= 0) return false
-
     if (!token) {
       if (item) {
         item.ilosc = newQty
       } else {
-        cartItems.value.push({ idProduktu: productId, ilosc: 1, product })
+        cartItems.value.push({
+          idProduktu: product.idProduktu,
+          ilosc: 1,
+          product,
+        })
+        console.log(cartItems)
       }
       syncLocalStorage()
     } else {
       const payload = {
         idPozycji: item.idPozycji,
         IdKoszyka: cartId.value,
-        IdProduktu: productId,
+        IdProduktu: product.idProduktu,
         Ilosc: delta,
       }
       await api.put(`cartitems`, payload)
@@ -101,20 +159,28 @@ export const updateQuantity = async (productId, delta, showAlert) => {
     return false
   }
 }
-
 export const addToCart = async (product, showAlert) => {
   try {
     if (!cartId.value && token) await getCart()
     //fixes diffrent Id name
-    if(product.productId) product.idProduktu = product.productId 
+    if (product.productId) product.idProduktu = product.productId
     const exists = cartItems.value.some(
       (i) => i.idProduktu === product.idProduktu,
     )
 
     if (exists) {
-      return await updateQuantity(product.idProduktu, 1, showAlert)
+      return await updateQuantity(product, 1, showAlert)
     }
+    const isValid = await isItemQuantityValid(product.idProduktu, 1)
+    if (!isValid) {
+      showAlert({
+        type: "error",
+        message: "Product is not avaliable",
+        duration: 1000,
+      })
 
+      return
+    }
     if (!token) {
       cartItems.value.push({
         idProduktu: product.idProduktu,
@@ -125,7 +191,7 @@ export const addToCart = async (product, showAlert) => {
     } else {
       await api.post("cartitems", {
         idKoszyka: cartId.value,
-        idProduktu: product.idProduktu ,
+        idProduktu: product.idProduktu,
         ilosc: 1,
       })
       await getCart()
@@ -133,7 +199,11 @@ export const addToCart = async (product, showAlert) => {
 
     showAlert({ type: "success", message: "Added to cart", duration: 1000 })
   } catch (error) {
-    showAlert({ type: "error", message: "Failed to add product",duration: 1000 })
+    showAlert({
+      type: "error",
+      message: "Failed to add product",
+      duration: 1000,
+    })
   }
 }
 
@@ -150,9 +220,13 @@ export const removeFromCart = async (itemId, showAlert) => {
     }
   }
 
-  showAlert({ type: "success", message: "Item removed", duration: 1000})
+  showAlert({ type: "success", message: "Item removed", duration: 1000 })
 }
-
+const isItemQuantityValid = async (productId, newQty) => {
+  if (newQty <= 0) return false
+  const { data: product } = await api.get(`products/${productId}`)
+  return newQty <= product.stanMagazynowy
+}
 export const clearCart = () => {
   cartItems.value = []
   if (token) api.delete(`cart/${cartId.value}`)

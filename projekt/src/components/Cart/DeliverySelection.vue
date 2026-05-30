@@ -1,21 +1,6 @@
 <script setup>
-import { computed } from "vue"
-
+import { selectedDelivery, isLocalDelivery } from "./cartLogic"
 const props = defineProps({
-  modelValue: {
-    type: Object,
-    default: {
-      id: 0,
-      name: "",
-      price: 0.0,
-      icon: "fa-solid fa-truck",
-    },
-    required: true,
-  },
-  isLocalDelivery: {
-    type: Boolean,
-    required: true,
-  },
   variant: {
     type: String,
     default: "list",
@@ -23,17 +8,19 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(["update:modelValue", "update:isLocalDelivery"])
+// const emit = defineEmits(["update:isLocalDelivery"])
 
 const deliveryMethods = [
   { id: 1, name: "Standard Courier", price: 15.0, icon: "fa-solid fa-truck" },
   { id: 2, name: "Express Shipping", price: 25.5, icon: "fa-solid fa-bolt" },
   { id: 3, name: "Local Pickup", price: 0.0, icon: "fa-solid fa-box-open" },
 ]
+selectedDelivery.value = deliveryMethods[0]
 const selectMethod = (method) => {
-  const isLocal = method.id === 3
-  emit("update:isLocalDelivery", isLocal)
-  emit("update:modelValue", method)
+  selectedDelivery.value = method
+  isLocalDelivery.value = method.id === 3
+  console.log(method.id === 3)
+  // emit("update:isLocalDelivery", isLocal)
 }
 </script>
 
@@ -45,7 +32,7 @@ const selectMethod = (method) => {
         :key="method.id"
         class="delivery-card-option"
         :class="{
-          active: props.modelValue && props.modelValue.id === method.id,
+          active: selectedDelivery && selectedDelivery.id === method.id,
         }"
         @click="selectMethod(method)"
       >

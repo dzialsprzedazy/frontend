@@ -1,58 +1,23 @@
 <script setup>
-import { ref, onMounted, computed, watch } from "vue"
+import { ref, onMounted, computed } from "vue"
 import api from "@/services/axios.js"
-import { cartItems, cartSum, clearCart } from "@/components/Cart/cartLogic"
+import {
+  cartSum,
+  addressForm,
+  shippingCost,
+  isLocalDelivery,
+} from "@/components/Cart/cartLogic"
 import DeliverySelection from "./DeliverySelection.vue"
 const isLoggedIn = localStorage.getItem("token") != null
 
 const props = defineProps({
   show: Boolean,
-  prefilledAddress: {
-    type: Object,
-    default: () => ({
-      miasto: "",
-      ulica: "",
-      numerBudynku: "",
-      numerLokalu: "",
-      kodPocztowy: "",
-    }),
-  },
-  selectedDelivery: {
-    type: Object,
-    default: {
-      id: 0,
-      name: "",
-      price: 0.0,
-      icon: "fa-solid fa-truck",
-    },
-    required: true,
-  },
 })
-const emit = defineEmits(["close", "order-placed", "update:selectedDelivery"])
+const emit = defineEmits(["close", "continue-to-payment"])
 
 const isLoading = ref(false)
 const isSubmitting = ref(false)
 const placedOrderFlag = ref(false)
-
-const shippingCost = ref(15)
-
-const checkoutForm = ref({
-  firstName: "",
-  lastName: "",
-  email: "",
-  phone: "",
-  street: "",
-  buildingNo: "",
-  aptNo: "",
-  postalCode: "",
-  city: "",
-})
-
-const selectedDelivery = computed({
-  get: () => props.selectedDelivery,
-  set: (val) => emit("update:selectedDelivery", val),
-})
-const isLocalDelivery = ref(false)
 
 const hasFirstName = ref(false)
 const hasLastName = ref(false)
@@ -60,48 +25,31 @@ const hasEmail = ref(false)
 const hasPhone = ref(false)
 const hasAddress = ref(false)
 
-const calculateCheckoutShipping = () => {
-  if (cartItems == null || cartItems.value.length < 1) {
-    shippingCost.value = 0
-    return
-  }
-
-  let currentCost = selectedDelivery.value.price || 0
-
-  for (const item of cartItems.value) {
-    if (item.product && item.product.kategorie) {
-      const isBook = item.product.kategorie.some((kategoria) => {
-        const nazwaKategorii = kategoria.nazwaKategorii || kategoria.nazwa || ""
-        return (
-          nazwaKategorii.toLowerCase().includes("books") ||
-          nazwaKategorii.toLowerCase().includes("book")
-        )
-      })
-
-      if (isBook) {
-        currentCost += 1.24 * (item.ilosc || 1)
-      }
-    }
-  }
-  shippingCost.value = currentCost
-}
-
 const isPostalCodeValid = computed(() => {
-  return /^\d{2}-\d{3}$/.test(checkoutForm.value.postalCode)
+  return /^\d{2}-\d{3}$/.test(addressForm.value.postalCode)
 })
+const isFormInvalid = () => {
+  // Funkcja pomocnicza, która skraca kod i dba o sprawdzanie spacji/pustych stringów
+  const isEmpty = (value) => value == null || value.trim() === ""
 
-const isFormInvalid = computed(() => {
+  let isAddressValid = true
+
+  if (!isLocalDelivery) {
+    isAddressValid =
+      !isEmpty(addressForm.value.street) &&
+      !isEmpty(addressForm.value.buildingNo) &&
+      !isEmpty(addressForm.value.city) &&
+      isPostalCodeValid.value
+  }
+
   return (
-    !checkoutForm.value.firstName ||
-    !checkoutForm.value.lastName ||
-    !checkoutForm.value.email ||
-    !checkoutForm.value.phone ||
-    !checkoutForm.value.street ||
-    !checkoutForm.value.buildingNo ||
-    !isPostalCodeValid.value ||
-    !checkoutForm.value.city
+    !isEmpty(addressForm.value.firstName) &&
+    !isEmpty(addressForm.value.lastName) &&
+    !isEmpty(addressForm.value.email) &&
+    !isEmpty(addressForm.value.phone) &&
+    isAddressValid
   )
-})
+}
 
 const totalOrderSum = computed(() => {
   return (cartSum.value + shippingCost.value).toFixed(2)
@@ -115,22 +63,21 @@ const loadUserProfile = async () => {
     const profile = response.data
 
     if (profile.imie) {
-      checkoutForm.value.firstName = profile.imie
+      addressForm.value.firstName = profile.imie
       hasFirstName.value = true
     }
     if (profile.nazwisko) {
-      checkoutForm.value.lastName = profile.nazwisko
+      addressForm.value.lastName = profile.nazwisko
       hasLastName.value = true
     }
     if (profile.email) {
-      checkoutForm.value.email = profile.email
+      addressForm.value.email = profile.email
       hasEmail.value = true
     }
 
-    const dbPhone =
-      profile.telefon || profile.numerTelefonu || profile.phoneNumber
+    const dbPhone = profile.telefon
     if (dbPhone) {
-      checkoutForm.value.phone = dbPhone
+      addressForm.value.phone = dbPhone
       hasPhone.value = true
     }
   } catch (error) {
@@ -143,84 +90,29 @@ const loadUserProfile = async () => {
 const verifyAndSetAddress = () => {
   const addr = props.prefilledAddress
   if (addr && addr.ulica && addr.miasto && addr.kodPocztowy) {
-    checkoutForm.value.street = addr.ulica
-    checkoutForm.value.buildingNo = addr.numerBudynku
-    checkoutForm.value.aptNo = addr.numerLokalu || ""
-    checkoutForm.value.postalCode = addr.kodPocztowy
-    checkoutForm.value.city = addr.miasto
+    addressForm.value.street = addr.ulica
+    addressForm.value.buildingNo = addr.numerBudynku
+    addressForm.value.aptNo = addr.numerLokalu || ""
+    addressForm.value.postalCode = addr.kodPocztowy
+    addressForm.value.city = addr.miasto
     hasAddress.value = true
   } else {
     hasAddress.value = false
   }
 }
 
-const handlePlaceOrder = async () => {
-  placedOrderFlag.value = true
-  if (isFormInvalid.value) {
+const handleProceedToPayment = () => {
+  if (!isFormInvalid()) {
     console.warn("Fill in all highlighted fields before proceeding")
     return
   }
-
-  isSubmitting.value = true
-  try {
-    const orderPayload = {
-      imie: checkoutForm.value.firstName,
-      nazwisko: checkoutForm.value.lastName,
-      email: checkoutForm.value.email,
-      telefon: checkoutForm.value.phone,
-
-      adresDostawy: {
-        ulica: checkoutForm.value.street,
-        numerBudynku: checkoutForm.value.buildingNo,
-        numerLokalu: checkoutForm.value.aptNo || null,
-        kodPocztowy: checkoutForm.value.postalCode,
-        miasto: checkoutForm.value.city,
-      },
-
-      produkty: cartItems.value.map((item) => ({
-        idProduktu: item.idProduktu,
-        ilosc: item.ilosc,
-        cenaCząstkowa: item.product?.cena || 0,
-      })),
-      kosztWysylki: shippingCost.value,
-      sumaCalkowita: parseFloat(totalOrderSum.value),
-    }
-    console.log(orderPayload)
-
-    // showAlert({ type: "success", message: "Order placed successfully!" }) // uncomment when ready
-    clearCart()
-    emit("order-placed")
-    emit("close")
-  } catch (error) {
-    console.error("Order error:", error)
-  } finally {
-    isSubmitting.value = false
-  }
+  placedOrderFlag.value = true
+  emit("continue-to-payment")
 }
-
-watch(
-  [() => props.show, () => props.prefilledAddress],
-  ([isShown, address]) => {
-    if (isShown) {
-      verifyAndSetAddress()
-      calculateCheckoutShipping()
-    }
-  },
-  { deep: true, immediate: true },
-)
-
-watch(
-  selectedDelivery,
-  (selectedDelivery) => {
-    calculateCheckoutShipping()
-  },
-  { deep: true, immediate: true },
-)
 
 onMounted(() => {
   loadUserProfile()
   verifyAndSetAddress()
-  calculateCheckoutShipping()
 })
 </script>
 
@@ -245,7 +137,6 @@ onMounted(() => {
           </div>
 
           <div v-else class="checkout-flow-form">
-            
             <div class="checkout-section mb-4">
               <h3 class="section-subtitle">1. Personal Information</h3>
               <p class="section-hint mb-4">
@@ -259,16 +150,16 @@ onMounted(() => {
                   >
                   <input
                     type="text"
-                    v-model="checkoutForm.firstName"
+                    v-model="addressForm.firstName"
                     class="form-control"
                     :class="{
-                      'input-error': placedOrderFlag && !checkoutForm.firstName,
+                      'input-error': placedOrderFlag && !addressForm.firstName,
                     }"
                     placeholder="Enter first name"
                     :disabled="hasFirstName || isSubmitting"
                   />
                   <span
-                    v-if="placedOrderFlag && !checkoutForm.firstName"
+                    v-if="placedOrderFlag && !addressForm.firstName"
                     class="error-text"
                     >First Name is required</span
                   >
@@ -279,16 +170,16 @@ onMounted(() => {
                   >
                   <input
                     type="text"
-                    v-model="checkoutForm.lastName"
+                    v-model="addressForm.lastName"
                     class="form-control"
                     :class="{
-                      'input-error': placedOrderFlag && !checkoutForm.lastName,
+                      'input-error': placedOrderFlag && !addressForm.lastName,
                     }"
                     placeholder="Enter last name"
                     :disabled="hasLastName || isSubmitting"
                   />
                   <span
-                    v-if="placedOrderFlag && !checkoutForm.lastName"
+                    v-if="placedOrderFlag && !addressForm.lastName"
                     class="error-text"
                     >Last Name is required</span
                   >
@@ -302,15 +193,15 @@ onMounted(() => {
                   >
                   <input
                     type="email"
-                    v-model="checkoutForm.email"
+                    v-model="addressForm.email"
                     class="form-control"
                     :class="{
-                      'input-error': placedOrderFlag && !checkoutForm.email,
+                      'input-error': placedOrderFlag && !addressForm.email,
                     }"
                     placeholder="name@example.com"
                   />
                   <span
-                    v-if="placedOrderFlag && !checkoutForm.email"
+                    v-if="placedOrderFlag && !addressForm.email"
                     class="error-text"
                     >Email Address is required</span
                   >
@@ -321,15 +212,15 @@ onMounted(() => {
                   >
                   <input
                     type="tel"
-                    v-model="checkoutForm.phone"
+                    v-model="addressForm.phone"
                     class="form-control"
                     :class="{
-                      'input-error': placedOrderFlag && !checkoutForm.phone,
+                      'input-error': placedOrderFlag && !addressForm.phone,
                     }"
                     placeholder="e.g. +48 123 456 789"
                   />
                   <span
-                    v-if="placedOrderFlag && !checkoutForm.phone"
+                    v-if="placedOrderFlag && !addressForm.phone"
                     class="error-text"
                     >Phone Number is required</span
                   >
@@ -340,17 +231,13 @@ onMounted(() => {
             <div class="checkout-section mb-4">
               <h3 class="section-subtitle">2. Delivery Method</h3>
               <div class="mt-3">
-                <DeliverySelection
-                  v-model="selectedDelivery"
-                  v-model:is-local-delivery="isLocalDelivery"
-                  variant="grid"
-                />
+                <DeliverySelection variant="grid" />
               </div>
             </div>
 
-            <div class="checkout-section mb-4">
+            <div v-if="!isLocalDelivery" class="checkout-section mb-4">
               <h3 class="section-subtitle">3. Shipping Address</h3>
-              
+
               <p v-if="hasAddress" class="section-hint success-hint mb-4 mt-2">
                 ✓ Using address selected during delivery cost calculation.
               </p>
@@ -364,15 +251,15 @@ onMounted(() => {
                 >
                 <input
                   type="text"
-                  v-model="checkoutForm.street"
+                  v-model="addressForm.street"
                   class="form-control"
                   :class="{
-                    'input-error': placedOrderFlag && !checkoutForm.street,
+                    'input-error': placedOrderFlag && !addressForm.street,
                   }"
                   placeholder="Street name"
                 />
                 <span
-                  v-if="placedOrderFlag && !checkoutForm.street"
+                  v-if="placedOrderFlag && !addressForm.street"
                   class="error-text"
                   >Street is required</span
                 >
@@ -385,16 +272,15 @@ onMounted(() => {
                   >
                   <input
                     type="text"
-                    v-model="checkoutForm.buildingNo"
+                    v-model="addressForm.buildingNo"
                     class="form-control"
                     :class="{
-                      'input-error':
-                        placedOrderFlag && !checkoutForm.buildingNo,
+                      'input-error': placedOrderFlag && !addressForm.buildingNo,
                     }"
                     placeholder="e.g. 12A"
                   />
                   <span
-                    v-if="placedOrderFlag && !checkoutForm.buildingNo"
+                    v-if="placedOrderFlag && !addressForm.buildingNo"
                     class="error-text"
                     >Building No. is required</span
                   >
@@ -403,7 +289,7 @@ onMounted(() => {
                   <label class="form-label">Apt No.</label>
                   <input
                     type="text"
-                    v-model="checkoutForm.aptNo"
+                    v-model="addressForm.aptNo"
                     class="form-control"
                     placeholder="e.g. 4 (optional)"
                   />
@@ -417,7 +303,7 @@ onMounted(() => {
                   >
                   <input
                     type="text"
-                    v-model="checkoutForm.postalCode"
+                    v-model="addressForm.postalCode"
                     class="form-control"
                     :class="{
                       'input-error': placedOrderFlag && !isPostalCodeValid,
@@ -425,7 +311,7 @@ onMounted(() => {
                     placeholder="00-000"
                   />
                   <span
-                    v-if="placedOrderFlag && !checkoutForm.postalCode"
+                    v-if="placedOrderFlag && !addressForm.postalCode"
                     class="error-text"
                   >
                     Postal Code is required.
@@ -443,15 +329,15 @@ onMounted(() => {
                   >
                   <input
                     type="text"
-                    v-model="checkoutForm.city"
+                    v-model="addressForm.city"
                     class="form-control"
                     :class="{
-                      'input-error': placedOrderFlag && !checkoutForm.city,
+                      'input-error': placedOrderFlag && !addressForm.city,
                     }"
                     placeholder="City name"
                   />
                   <span
-                    v-if="placedOrderFlag && !checkoutForm.city"
+                    v-if="placedOrderFlag && !addressForm.city"
                     class="error-text"
                     >City is required</span
                   >
@@ -465,7 +351,7 @@ onMounted(() => {
                 <span>Items Subtotal:</span>
                 <span class="fw-bold">PLN {{ cartSum.toFixed(2) }}</span>
               </div>
-              <div class="summary-line">
+              <div v-if="shippingCost" class="summary-line">
                 <span>Shipping Cost:</span>
                 <span class="fw-bold">PLN {{ shippingCost.toFixed(2) }}</span>
               </div>
@@ -475,7 +361,6 @@ onMounted(() => {
                 <span class="total-price">PLN {{ totalOrderSum }}</span>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -489,10 +374,10 @@ onMounted(() => {
           </button>
           <button
             class="btn-primary"
-            @click="handlePlaceOrder"
+            @click="handleProceedToPayment"
             :disabled="isLoading || isSubmitting"
           >
-            {{ isSubmitting ? "Processing..." : "Place Order & Pay" }}
+            Continue to Payment
           </button>
         </div>
       </div>
@@ -501,18 +386,40 @@ onMounted(() => {
 </template>
 
 <style scoped>
-
-.mb-2 { margin-bottom: 0.75rem; }
-.mb-3 { margin-bottom: 1.25rem; }
-.mb-4 { margin-bottom: 2rem; }
-.mt-1 { margin-top: 0.25rem; }
-.mt-2 { margin-top: 0.75rem; }
-.mt-3 { margin-top: 1.25rem; }
-.mt-4 { margin-top: 2rem; }
-.p-3 { padding: 1.5rem; }
-.py-4 { padding-top: 2rem; padding-bottom: 2rem; }
-.text-center { text-align: center; }
-.fw-bold { font-weight: 600; }
+.mb-2 {
+  margin-bottom: 0.75rem;
+}
+.mb-3 {
+  margin-bottom: 1.25rem;
+}
+.mb-4 {
+  margin-bottom: 2rem;
+}
+.mt-1 {
+  margin-top: 0.25rem;
+}
+.mt-2 {
+  margin-top: 0.75rem;
+}
+.mt-3 {
+  margin-top: 1.25rem;
+}
+.mt-4 {
+  margin-top: 2rem;
+}
+.p-3 {
+  padding: 1.5rem;
+}
+.py-4 {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+.text-center {
+  text-align: center;
+}
+.fw-bold {
+  font-weight: 600;
+}
 
 .modal-mask {
   position: fixed;
@@ -571,7 +478,7 @@ onMounted(() => {
 }
 
 .modal-body {
-  padding: 1.5rem 2rem; 
+  padding: 1.5rem 2rem;
   overflow-y: auto;
   background-color: #ffffff;
 }
@@ -602,7 +509,7 @@ onMounted(() => {
 
 .row-fields {
   display: flex;
-  gap: 1.25rem; 
+  gap: 1.25rem;
 }
 
 .flex-1 {
@@ -626,7 +533,7 @@ onMounted(() => {
 }
 
 .form-control {
-  padding: 0.75rem 1rem; 
+  padding: 0.75rem 1rem;
   border: 1px solid #eae8f5;
   border-radius: 8px;
   font-size: 0.95rem;
@@ -763,7 +670,7 @@ button:disabled {
     flex-direction: column;
     gap: 0.75rem;
   }
-  
+
   .modal-body {
     padding: 1.5rem;
   }

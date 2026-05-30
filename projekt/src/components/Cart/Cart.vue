@@ -4,6 +4,9 @@ import {
   cartItems,
   cartSum,
   getCart,
+  addressForm,
+  shippingCost,
+  isLocalDelivery,
   updateQuantity,
   removeFromCart,
   clearCart as clearCartLogic,
@@ -12,6 +15,7 @@ import { handleErrors } from "@/../errors/ErrorHandler.js"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 import ErrorCard from "@/../errors/ErrorCard.vue"
 import Checkout from "./Checkout.vue"
+import PaymentCheckout from "./PaymentCheckout.vue"
 import DeliverySelection from "./DeliverySelection.vue"
 import api from "@/services/axios.js"
 
@@ -20,30 +24,14 @@ const token = localStorage.getItem("token")
 const isLoading = ref(true)
 const fetchError = ref(null)
 const showCheckout = ref(false)
+const showPayment = ref(false)
 
 const calculateShippingFlag = ref(false)
 
-const shippingCost = ref(null)
 const discount = ref(null)
 const addresses = ref([])
 const addressQuery = ref("")
 const showAddressDropdown = ref(false)
-
-const isLocalDelivery = ref(false)
-const selectedDelivery = ref({
-  id: 0,
-  name: "",
-  price: 0.0,
-  icon: "fa-solid fa-truck",
-})
-
-const addressForm = ref({
-  miasto: "",
-  ulica: "",
-  numerBudynku: "",
-  numerLokalu: "",
-  kodPocztowy: "",
-})
 
 const loadCart = async () => {
   window.scrollTo(0, 0)
@@ -78,38 +66,6 @@ const loadAddresses = async () => {
   }
 }
 
-const calculateShipping = () => {
-  shippingCost.value = null
-  let address = addressForm.value
-
-  if (
-    !cartItems ||
-    cartItems.value.length < 1 ||
-    address.miasto === "" ||
-    address.ulica === "" ||
-    address.numerBudynku === "" ||
-    !isPostalCodeValid.value
-  ) {
-    calculateShippingFlag.value = true
-    return
-  }
-  shippingCost.value = selectedDelivery.value ? selectedDelivery.value.price : 0
-
-  for (var item of cartItems.value) {
-    if (item.product == null || item.product.kategorie == null) {
-      console.error("something went wrong with resorces")
-      continue
-    }
-
-    const isBook = item.product.kategorie.some((kategoria) => {
-      const nazwaKategorii = kategoria.nazwaKategorii || ""
-      return nazwaKategorii.toLowerCase().includes("books")
-    })
-
-    if (isBook) shippingCost.value += 1.24 * item.ilosc
-  }
-}
-
 const isPostalCodeValid = computed(() => {
   return /^\d{2}-\d{3}$/.test(addressForm.value.kodPocztowy)
 })
@@ -126,7 +82,11 @@ const totalSum = computed(() => {
 })
 
 const selectAddress = (addr) => {
-  addressForm.value = addr
+  addressForm.value.street = addr.ulica
+  addressForm.value.buildingNo = addr.numerBudynku
+  addressForm.value.aptNo = addr.numerLokalu || ""
+  addressForm.value.postalCode = addr.kodPocztowy
+  addressForm.value.city = addr.miasto
   addressQuery.value = `${addr.ulica} ${addr.numerBudynku}${addr.numerLokalu ? "/" + addr.numerLokalu : ""}, ${addr.miasto}`
   showAddressDropdown.value = false
 }
@@ -142,7 +102,7 @@ const filteredAddresses = computed(() => {
 })
 
 const handleUpdate = async (product, delta) => {
-  await updateQuantity(product.idProduktu, delta, showAlert)
+  await updateQuantity(product, delta, showAlert)
 }
 
 const handleClear = () => {
@@ -152,7 +112,15 @@ const handleClear = () => {
 const handleRemove = (id) => {
   removeFromCart(id, showAlert)
 }
+const goToPaymentStep = () => {
+  showCheckout.value = false
+  showPayment.value = true
+}
 
+const backToCheckoutStep = () => {
+  showPayment.value = false
+  showCheckout.value = true
+}
 onMounted(async () => {
   await loadCart()
   await loadAddresses()
@@ -184,7 +152,6 @@ onMounted(async () => {
     <div class="custom-container main-content">
       <div v-if="cartItems.length > 0" class="cart-grid">
         <div class="products-section">
-          
           <!-- Nagłówki tabeli koszyka (widoczne tylko na PC) -->
           <div class="cart-items-header desktop-only">
             <div class="h-product">Product</div>
@@ -202,7 +169,10 @@ onMounted(async () => {
             >
               <div class="card-main-info">
                 <div class="item-image-wrapper">
-                  <router-link :to="`/products/${item.product?.idProduktu}`" class="image-link">
+                  <router-link
+                    :to="`/products/${item.product?.idProduktu}`"
+                    class="image-link"
+                  >
                     <img
                       v-if="item.product?.zdjecie"
                       :src="item.product?.zdjecie"
@@ -214,20 +184,31 @@ onMounted(async () => {
                 </div>
 
                 <div class="item-details">
-                  <router-link :to="`/products/${item.product?.idProduktu}`" class="product-title-link">
+                  <router-link
+                    :to="`/products/${item.product?.idProduktu}`"
+                    class="product-title-link"
+                  >
                     <h3 class="item-name">{{ item.product?.nazwaProduktu }}</h3>
                   </router-link>
                   <p class="item-author">
-                    By <strong>{{ item.product?.autorImie }} {{ item.product?.autorNazwisko }}</strong>
+                    By
+                    <strong
+                      >{{ item.product?.autorImie }}
+                      {{ item.product?.autorNazwisko }}</strong
+                    >
                   </p>
                   <!-- Cena pokazana bezpośrednio pod tytułem na mobile -->
-                  <div class="item-mobile-price mobile-only">{{ item.product?.cena.toFixed(2) }} PLN</div>
+                  <div class="item-mobile-price mobile-only">
+                    {{ item.product?.cena.toFixed(2) }} PLN
+                  </div>
                 </div>
               </div>
 
               <!-- Desktop Kolumny -->
-              <div class="item-price desktop-only">{{ item.product?.cena.toFixed(2) }} PLN</div>
-              
+              <div class="item-price desktop-only">
+                {{ item.product?.cena.toFixed(2) }} PLN
+              </div>
+
               <div class="item-quantity desktop-only">
                 <div class="quantity-control">
                   <button @click="handleUpdate(item.product, -1)">-</button>
@@ -237,7 +218,12 @@ onMounted(async () => {
               </div>
 
               <div class="item-total desktop-only">
-                <strong>{{ (item.product?.cena * item.ilosc).toFixed(2) }} PLN</strong>
+                <strong
+                  >{{
+                    (item.product?.cena * item.ilosc).toFixed(2)
+                  }}
+                  PLN</strong
+                >
               </div>
 
               <button
@@ -256,7 +242,12 @@ onMounted(async () => {
                   <button @click="handleUpdate(item.product, 1)">+</button>
                 </div>
                 <div class="mobile-total-box">
-                  <strong>{{ (item.product?.cena * item.ilosc).toFixed(2) }} PLN</strong>
+                  <strong
+                    >{{
+                      (item.product?.cena * item.ilosc).toFixed(2)
+                    }}
+                    PLN</strong
+                  >
                 </div>
                 <button
                   class="remove-icon-btn"
@@ -266,7 +257,6 @@ onMounted(async () => {
                   <i class="fa-solid fa-trash-can"></i>
                 </button>
               </div>
-
             </div>
           </div>
 
@@ -297,9 +287,10 @@ onMounted(async () => {
               <span>PLN {{ totalSum }}</span>
             </div>
 
-            <p class="shipping-info">
-              <i class="fa-solid fa-circle-check"></i> Shipping & taxes calculated at checkout
-            </p>
+            <!-- <p class="shipping-info">
+              <i class="fa-solid fa-circle-check"></i> Shipping & taxes
+              calculated at checkout
+            </p> -->
             <button class="checkout-btn" @click="showCheckout = true">
               Proceed To Checkout
             </button>
@@ -309,11 +300,7 @@ onMounted(async () => {
           <div class="shipping-card card-container">
             <label class="delivery-label">Delivery Method</label>
 
-            <DeliverySelection
-              v-model="selectedDelivery"
-              v-model:is-local-delivery="isLocalDelivery"
-              variant="list"
-            />
+            <DeliverySelection variant="list" />
             <hr v-if="!isLocalDelivery" class="divider-line" />
 
             <div
@@ -354,7 +341,7 @@ onMounted(async () => {
                 <label class="form-label">Street</label>
                 <input
                   type="text"
-                  v-model="addressForm.ulica"
+                  v-model="addressForm.street"
                   placeholder="Street"
                   class="shipping-input"
                 />
@@ -365,7 +352,7 @@ onMounted(async () => {
                   <label class="form-label">Building No.</label>
                   <input
                     type="text"
-                    v-model="addressForm.numerBudynku"
+                    v-model="addressForm.buildingNo"
                     placeholder="Building No."
                     class="shipping-input"
                   />
@@ -374,7 +361,7 @@ onMounted(async () => {
                   <label class="form-label">Apt No.</label>
                   <input
                     type="text"
-                    v-model="addressForm.numerLokalu"
+                    v-model="addressForm.aptNo"
                     placeholder="Apt No. (optional)"
                     class="shipping-input"
                   />
@@ -385,7 +372,7 @@ onMounted(async () => {
                 <label class="form-label">Postal Code</label>
                 <input
                   type="text"
-                  v-model="addressForm.kodPocztowy"
+                  v-model="addressForm.postalCode"
                   placeholder="Postal Code"
                   class="shipping-input"
                 />
@@ -401,24 +388,20 @@ onMounted(async () => {
                 <label class="form-label">City</label>
                 <input
                   type="text"
-                  v-model="addressForm.miasto"
+                  v-model="addressForm.city"
                   placeholder="City"
                   class="shipping-input"
                 />
               </div>
             </div>
 
-            <button
-              v-if="!isLocalDelivery"
-              class="calc-btn"
-              v-on:click="calculateShipping"
-            >
+            <!-- <button v-if="!isLocalDelivery" class="calc-btn">
               Calculate Shipping
-            </button>
+            </button> -->
           </div>
         </div>
       </div>
-      
+
       <div v-else class="empty-cart text-center">
         <div class="empty-cart-icon">
           <i class="fa-solid fa-basket-shopping"></i>
@@ -428,16 +411,21 @@ onMounted(async () => {
           Looks like you haven't added anything to your cart yet. Explore our
           latest products and find something you love!
         </p>
-        <router-link to="/products" class="go-shopping-btn">Go Shopping</router-link>
+        <router-link to="/products" class="go-shopping-btn"
+          >Go Shopping</router-link
+        >
       </div>
     </div>
   </div>
   <Checkout
     :show="showCheckout"
-    v-model:selectedDelivery="selectedDelivery"
-    :prefilledAddress="addressForm"
-    :shippingCost="shippingCost"
     @close="showCheckout = false"
+    @continue-to-payment="goToPaymentStep"
+  />
+  <PaymentCheckout
+    :show="showPayment"
+    @close="showPayment = false"
+    @back="backToCheckoutStep"
     @order-placed="loadCart"
   />
 </template>
@@ -527,11 +515,22 @@ onMounted(async () => {
   align-items: center;
 }
 
-.h-product { grid-column: 1; text-align: left; }
-.h-price { text-align: left; }
-.h-quantity { display: flex; justify-content: center; }
-.h-total { text-align: left; }
-.h-action { }
+.h-product {
+  grid-column: 1;
+  text-align: left;
+}
+.h-price {
+  text-align: left;
+}
+.h-quantity {
+  display: flex;
+  justify-content: center;
+}
+.h-total {
+  text-align: left;
+}
+.h-action {
+}
 
 .cart-items-list {
   display: flex;
@@ -614,7 +613,7 @@ onMounted(async () => {
 }
 
 .item-name {
-  font-size: 1.05rem; 
+  font-size: 1.05rem;
   font-weight: 700;
   margin: 0;
   line-height: 1.4;
@@ -635,7 +634,8 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-.item-price, .item-total {
+.item-price,
+.item-total {
   color: #151875;
   font-size: 1.05rem;
   text-align: left;
@@ -727,7 +727,9 @@ onMounted(async () => {
   border-color: #e53935;
 }
 
-.mobile-only { display: none; }
+.mobile-only {
+  display: none;
+}
 
 .card-container {
   background: #ffffff;
@@ -785,7 +787,9 @@ onMounted(async () => {
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  transition:
+    background-color 0.3s ease,
+    transform 0.2s ease;
   box-shadow: 0 4px 15px rgba(251, 46, 134, 0.2);
 }
 
@@ -901,7 +905,9 @@ onMounted(async () => {
   color: #4a405c;
   text-align: left;
   border-bottom: 1px solid #fbfbfe;
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 }
 
 .dropdown-list li:last-child {
@@ -985,9 +991,15 @@ onMounted(async () => {
 }
 
 @keyframes float-animation {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 @media (max-width: 1100px) {
@@ -997,8 +1009,10 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
-  .desktop-only { display: none !important; }
-  
+  .desktop-only {
+    display: none !important;
+  }
+
   .item-mobile-price.mobile-only {
     display: block;
     color: #151875;
@@ -1006,7 +1020,7 @@ onMounted(async () => {
     font-size: 1.1rem;
     margin-top: 0.4rem;
   }
-  
+
   .mobile-actions-row.mobile-only {
     display: flex;
     width: 100%;
