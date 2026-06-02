@@ -2,9 +2,11 @@ import { ref, computed, watch } from "vue"
 import api from "@/services/axios.js"
 
 const STORAGE_KEY = "shopping_cart"
-const token = localStorage.getItem("token")
-const userId = JSON.parse(localStorage.getItem("user"))?.id
+const TOKEN_KEY = "token"
 
+export const isLoggedIn = ref(localStorage.getItem(TOKEN_KEY) !== null)
+const userId = JSON.parse(localStorage.getItem("user"))?.id
+const isAddToCartActive = ref(false)
 export const cartItems = ref([])
 const cartId = ref(null)
 
@@ -26,6 +28,9 @@ export const addressForm = ref({
   postalCode: "",
   city: "",
 })
+export const refreshLoggedInStatus = () => {
+  isLoggedIn.value = localStorage.getItem(TOKEN_KEY) !== null
+}
 export const shippingCost = computed(() => {
   const address = addressForm.value
   const isCartEmpty = !cartItems.value || cartItems.value.length === 0
@@ -64,7 +69,7 @@ export const shippingCost = computed(() => {
   return cost
 })
 const syncLocalStorage = () => {
-  if (!token) {
+  if (!isLoggedIn.value) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems.value))
   }
 }
@@ -93,26 +98,34 @@ const createRemoteCart = async () => {
 }
 
 export const getCart = async () => {
-  if (!token) {
+  if (isAddToCartActive.value) return
+  isAddToCartActive.value = true
+  refreshLoggedInStatus()
+  if (!isLoggedIn.value) {
     const localData = localStorage.getItem(STORAGE_KEY)
     cartItems.value = localData ? JSON.parse(localData) : []
+    isAddToCartActive.value = false
     return cartItems.value
   }
-
   try {
     const { data } = await api.get(`cart/latest/${userId}`)
-    cartItems.value = data.pozycje || []
+    let dbCart = data.pozycje || []
+    cartItems.value = dbCart
     cartId.value = data.idKoszyka
+    isAddToCartActive.value = false
     return cartItems.value
   } catch (error) {
     if (error.response?.status === 404) {
       return await createRemoteCart()
     }
     throw error
+  } finally {
+    isAddToCartActive.value = false
   }
 }
 
 export const updateQuantity = async (product, delta, showAlert) => {
+  refreshLoggedInStatus()
   if (!product) return false
 
   try {
@@ -130,7 +143,7 @@ export const updateQuantity = async (product, delta, showAlert) => {
       })
       return false
     }
-    if (!token) {
+    if (!isLoggedIn.value) {
       if (item) {
         item.ilosc = newQty
       } else {
@@ -139,7 +152,6 @@ export const updateQuantity = async (product, delta, showAlert) => {
           ilosc: 1,
           product,
         })
-        console.log(cartItems)
       }
       syncLocalStorage()
     } else {
@@ -160,8 +172,9 @@ export const updateQuantity = async (product, delta, showAlert) => {
   }
 }
 export const addToCart = async (product, showAlert) => {
+  refreshLoggedInStatus()
   try {
-    if (!cartId.value && token) await getCart()
+    if (!cartId.value && isLoggedIn.value) await getCart()
     //fixes diffrent Id name
     if (product.productId) product.idProduktu = product.productId
     const exists = cartItems.value.some(
@@ -181,7 +194,7 @@ export const addToCart = async (product, showAlert) => {
 
       return
     }
-    if (!token) {
+    if (!isLoggedIn.value) {
       cartItems.value.push({
         idProduktu: product.idProduktu,
         ilosc: 1,
@@ -208,7 +221,7 @@ export const addToCart = async (product, showAlert) => {
 }
 
 export const removeFromCart = async (itemId, showAlert) => {
-  if (!token) {
+  if (!isLoggedIn.value) {
     cartItems.value = cartItems.value.filter((i) => i.idProduktu !== itemId)
     syncLocalStorage()
   } else {
@@ -229,6 +242,6 @@ const isItemQuantityValid = async (productId, newQty) => {
 }
 export const clearCart = () => {
   cartItems.value = []
-  if (token) api.delete(`cart/${cartId.value}`)
+  if (isLoggedIn.value) api.delete(`cart/${cartId.value}`)
   else localStorage.removeItem(STORAGE_KEY)
 }

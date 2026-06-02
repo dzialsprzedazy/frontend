@@ -6,10 +6,9 @@ import {
   addressForm,
   shippingCost,
   isLocalDelivery,
+  isLoggedIn,
 } from "@/components/Cart/cartLogic"
 import DeliverySelection from "./DeliverySelection.vue"
-const isLoggedIn = localStorage.getItem("token") != null
-
 const props = defineProps({
   show: Boolean,
 })
@@ -56,7 +55,7 @@ const totalOrderSum = computed(() => {
 })
 
 const loadUserProfile = async () => {
-  if (!isLoggedIn) return
+  if (!isLoggedIn.value) return
   isLoading.value = true
   try {
     const response = await api.get("users/me")
@@ -156,7 +155,6 @@ onMounted(() => {
                       'input-error': placedOrderFlag && !addressForm.firstName,
                     }"
                     placeholder="Enter first name"
-                    :disabled="hasFirstName || isSubmitting"
                   />
                   <span
                     v-if="placedOrderFlag && !addressForm.firstName"
@@ -176,7 +174,6 @@ onMounted(() => {
                       'input-error': placedOrderFlag && !addressForm.lastName,
                     }"
                     placeholder="Enter last name"
-                    :disabled="hasLastName || isSubmitting"
                   />
                   <span
                     v-if="placedOrderFlag && !addressForm.lastName"

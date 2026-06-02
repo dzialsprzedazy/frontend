@@ -10,6 +10,8 @@ import {
   updateQuantity,
   removeFromCart,
   clearCart as clearCartLogic,
+  isLoggedIn,
+  refreshLoggedInStatus,
 } from "@/components/Cart/cartLogic"
 import { handleErrors } from "@/../errors/ErrorHandler.js"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
@@ -20,7 +22,6 @@ import DeliverySelection from "./DeliverySelection.vue"
 import api from "@/services/axios.js"
 
 const { showAlert } = useAlerts()
-const token = localStorage.getItem("token")
 const isLoading = ref(true)
 const fetchError = ref(null)
 const showCheckout = ref(false)
@@ -52,7 +53,7 @@ const hasMoreThanOneAdress = computed(() => {
 })
 
 const loadAddresses = async () => {
-  if (!token) return
+  if (!isLoggedIn.value) return
 
   try {
     const response = await api.get("users/addresses")
@@ -122,6 +123,7 @@ const backToCheckoutStep = () => {
   showCheckout.value = true
 }
 onMounted(async () => {
+  refreshLoggedInStatus()
   await loadCart()
   await loadAddresses()
 })
@@ -528,8 +530,6 @@ onMounted(async () => {
 }
 .h-total {
   text-align: left;
-}
-.h-action {
 }
 
 .cart-items-list {

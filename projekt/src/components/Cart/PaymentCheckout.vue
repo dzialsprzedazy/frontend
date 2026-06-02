@@ -9,6 +9,7 @@ import {
   isLocalDelivery,
   shippingCost,
   selectedDelivery,
+  isLoggedIn,
 } from "@/components/Cart/cartLogic"
 
 const props = defineProps({
@@ -16,7 +17,6 @@ const props = defineProps({
 })
 const emit = defineEmits(["close", "order-placed", "back"])
 
-const isLoggedIn = localStorage.getItem("token") != null
 const isSubmitting = ref(false)
 const selectedPayment = ref(null)
 const placedOrderFlag = ref(false)
@@ -24,15 +24,26 @@ const placedOrderFlag = ref(false)
 const addresses = ref([])
 
 const blikCode = ref("")
+const cardData = ref({ cardNumber: "", date: "", ccv: "" })
 const bankTransferDetails = ref({
   accountNumber: "PL 12 3456 7890 0000 0000 1234 5678",
   title: "ORDER-" + Math.floor(Math.random() * 1000000),
 })
-// const validatePayment = () => {
-//   if (selectedPayment.value?.id === 1) return blikCode.value.length === 6
-//   if (selectedPayment.value?.id === 2) return cardData.value.number.length > 12
-//   return true
-// }
+
+const isPaymentValid = () => {
+  const isEmpty = (value) => value == null || value.trim() === ""
+
+  if (selectedPayment.value?.id === 1)
+    return !isEmpty(blikCode.value) && blikCode.value.length === 6
+  if (selectedPayment.value?.id === 2)
+    return (
+      !isEmpty(cardData.value.cardNumber) &&
+      !isEmpty(cardData.value.date) &&
+      !isEmpty(cardData.value.ccv) &&
+      cardData.value.cardNumber.trim().replace(/\s/g, "").length == 12
+    )
+  return true
+}
 const paymentMethods = [
   { id: 1, name: "BLIK", icon: "fa-solid fa-mobile-screen" },
   { id: 2, name: "Karta płatnicza", icon: "fa-regular fa-credit-card" },
@@ -47,7 +58,7 @@ const selectPayment = (method) => {
   selectedPayment.value = method
 }
 const loadAddresses = async () => {
-  if (!isLoggedIn) return
+  if (!isLoggedIn.value) return
 
   try {
     const response = await api.get("users/addresses")
@@ -58,7 +69,6 @@ const loadAddresses = async () => {
 }
 
 const findAddressId = () => {
-  console.log(addresses.value)
   const found = addresses.value.find((addr) => {
     return (
       addr.ulica === addressForm.value.street &&
@@ -68,15 +78,16 @@ const findAddressId = () => {
       addr.miasto === addressForm.value.city
     )
   })
-  console.log("found ")
-  console.log(found)
   return found ? found.idAdresu : null
 }
+
 const handleFinalizeOrder = async () => {
   placedOrderFlag.value = true
-  if (!selectedPayment.value) {
+  if (!selectedPayment.value || !isPaymentValid()) {
+    console.log(" niepoprawne dane")
     return
   }
+  console.log(isPaymentValid)
   const matchedId = findAddressId()
   isSubmitting.value = true
   try {
@@ -106,7 +117,7 @@ const handleFinalizeOrder = async () => {
     }
 
     console.log("Wysyłanie zamówienia:", orderPayload)
-    if (isLoggedIn) await api.post("users/orders", orderPayload)
+    if (isLoggedIn.value) await api.post("users/orders", orderPayload)
     else await api.post("users/orders/guest", orderPayload)
 
     clearCart()
@@ -219,10 +230,22 @@ onMounted(async () => {
                 </div>
 
                 <div v-if="selectedPayment.id === 2" class="card-form">
-                  <input placeholder="Card number" class="input-field mb-2" />
+                  <input
+                    v-model="cardData.cardNumber"
+                    placeholder="Card number"
+                    class="input-field mb-2"
+                  />
                   <div class="row-flex">
-                    <input placeholder="MM/YY" class="input-field" />
-                    <input placeholder="CVV" class="input-field" />
+                    <input
+                      v-model="cardData.date"
+                      placeholder="MM/YY"
+                      class="input-field"
+                    />
+                    <input
+                      v-model="cardData.ccv"
+                      placeholder="CVV"
+                      class="input-field"
+                    />
                   </div>
                 </div>
 
