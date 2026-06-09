@@ -37,37 +37,55 @@ const router = createRouter({
       name: "adminProfile",
       component: () => import("../views/Admin/AdminProfileView.vue"),
       // meta.requiresAuth means that the page is only for AUTHENTICATED users (logged in users)
-      meta: { requiresAuth: true },
+      meta: {     
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
     },
     {
       path: "/admin/discount-codes",
       name: "adminDiscountCodes",
       component: () => import("../views/Admin/DiscountCodesView.vue"),
-      meta: { requiresAuth: true },
+      meta: {     
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
     },
     {
       path: "/admin/product-management",
       name: "adminProductManagement",
       component: () => import("../views/Admin/ProductManagementView.vue"),
-      meta: { requiresAuth: true },
+      meta: {     
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
     },
     {
       path: "/admin/user-management",
       name: "adminUserManagement",
       component: () => import("../views/Admin/UserManagementView.vue"),
-      meta: { requiresAuth: true },
+      meta: {     
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
     },
     {
       path: "/admin/author-management",
       name: "adminAuthorManagement",
       component: () => import("../views/Admin/AuthorManagementView.vue"),
-      meta: { requiresAuth: true },
+      meta: {     
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
     },
     {
       path: "/admin/tag-management",
       name: "adminTagManagement",
       component: () => import("../views/Admin/TagManagementView.vue"),
-      meta: { requiresAuth: true },
+      meta: {     
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
     },
     {
       path: "/profile",
@@ -113,17 +131,21 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem("token")
+  const user = JSON.parse(localStorage.getItem("user") || "{}")
 
-  // If the route requires authentication and there is no token, redirect to login
   if (to.meta.requiresAuth && !token) {
     next("/login")
-  }
-  // Or if the route is for guests but there is a token, redirect to profile (or home)
-  else if (to.meta.requiresGuest && token) {
+  } else if (to.meta.requiresGuest && token) {
     next("/profile")
-  }
-  // Otherwise, allow the navigation
-  else {
+  } else if (to.meta.requiresAdmin) {
+    const isAdmin = user.roles?.includes("Admin")
+
+    if (!isAdmin) {
+      next("/")
+    } else {
+      next()
+    }
+  } else {
     next()
   }
 })
