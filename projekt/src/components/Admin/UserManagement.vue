@@ -21,6 +21,12 @@ const selectedStatus = ref("All")
 const showDeleteModal = ref(false)
 const userToDelete = ref(null)
 
+const showAddAdminModal = ref(false)
+const adminEmail = ref("")
+const adminPassword = ref("")
+const adminConfirmPassword = ref("")
+const isCreatingAdmin = ref(false)
+
 const loadUsers = async () => {
   isLoading.value = true
   fetchError.value = null
@@ -71,6 +77,69 @@ const executeDelete = async () => {
     })
   } finally {
     closeDeleteModal()
+  }
+}
+
+const openAddAdminModal = () => {
+  showAddAdminModal.value = true
+}
+
+const closeAddAdminModal = () => {
+  showAddAdminModal.value = false
+  adminEmail.value = ""
+  adminPassword.value = ""
+  adminConfirmPassword.value = ""
+}
+
+const createAdmin = async () => {
+  if (!adminEmail.value || !adminPassword.value || !adminConfirmPassword.value) {
+    showAlert({
+      type: "error",
+      message: "Please fill in all fields.",
+      position: "top-right",
+    })
+    return
+  }
+
+  if (adminPassword.value !== adminConfirmPassword.value) {
+    showAlert({
+      type: "error",
+      message: "Passwords do not match.",
+      position: "top-right",
+    })
+    return
+  }
+
+  try {
+    isCreatingAdmin.value = true
+
+    await api.post("users/admin", {
+      email: adminEmail.value,
+      password: adminPassword.value,
+    })
+
+    showAlert({
+      type: "success",
+      message: "Admin account created successfully.",
+      position: "top-right",
+    })
+
+    closeAddAdminModal()
+    await loadUsers()
+  } catch (error) {
+    const errorData = error.response?.data
+
+    const message = Array.isArray(errorData)
+      ? errorData.map(e => e.description).join(" ")
+      : errorData || "Failed to create admin account."
+
+    showAlert({
+      type: "error",
+      message,
+      position: "top-right",
+    })
+  } finally {
+    isCreatingAdmin.value = false
   }
 }
 
@@ -213,7 +282,7 @@ onMounted(loadUsers)
             </div>
 
             <div class="header-actions">
-              <button class="action-btn add disabled-btn" disabled>
+              <button class="action-btn add" @click="openAddAdminModal">
                 <i class="fa-solid fa-user-plus"></i>
                 <span>Add Admin</span>
               </button>
@@ -316,6 +385,47 @@ onMounted(loadUsers)
             <button class="btn-text" @click="closeDeleteModal">Cancel</button>
             <button class="btn-primary btn-danger" @click="executeDelete">
               <i class="fa-solid fa-user-slash"></i> Delete User
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="modal">
+      <div
+        v-if="showAddAdminModal"
+        class="modal-overlay"
+        @click.self="closeAddAdminModal"
+      >
+        <div class="modal-box confirm-box">
+          <div class="modal-header">
+            <h3>Add Admin Account</h3>
+            <button class="close-btn" @click="closeAddAdminModal">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Email</label>
+              <input v-model="adminEmail" type="email" class="modal-input" />
+            </div>
+
+            <div class="form-group">
+              <label>Password</label>
+              <input v-model="adminPassword" type="password" class="modal-input" />
+            </div>
+
+            <div class="form-group">
+              <label>Confirm Password</label>
+              <input v-model="adminConfirmPassword" type="password" class="modal-input" />
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn-text" @click="closeAddAdminModal">Cancel</button>
+            <button class="btn-primary" @click="createAdmin" :disabled="isCreatingAdmin">
+              {{ isCreatingAdmin ? "Creating..." : "Create Admin" }}
             </button>
           </div>
         </div>
@@ -984,6 +1094,32 @@ onMounted(loadUsers)
   .filter-pills {
     flex-direction: column;
   }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  color: #8a8fb9;
+  font-weight: 700;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e1e1e8;
+  border-radius: 8px;
+  outline: none;
+}
+
+.modal-input:focus {
+  border-color: #3f509e;
+  box-shadow: 0 0 0 4px rgba(63, 80, 158, 0.1);
 }
 
 @media (max-width: 400px) {
