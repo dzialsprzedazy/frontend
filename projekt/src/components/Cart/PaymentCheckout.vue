@@ -23,6 +23,13 @@ const placedOrderFlag = ref(false)
 
 const addresses = ref([])
 
+const discountCode = ref("")
+const discount = ref(null)
+const appliedDiscount = ref(0)
+
+const discountError = ref(false)
+const isApplyingDiscount = ref(false)
+
 const blikCode = ref("")
 const cardData = ref({ cardNumber: "", date: "", ccv: "" })
 const bankTransferDetails = ref({
@@ -51,9 +58,14 @@ const paymentMethods = [
 ]
 
 const totalOrderSum = computed(() => {
-  return (cartSum.value + shippingCost.value).toFixed(2)
-})
+  const sum = cartSum.value + shippingCost.value
+  const dis = discount.value
+    ? sum * (discount.value.znizkaProcentowa / 100.0)
+    : 0
 
+  appliedDiscount.value = dis
+  return Math.max(0, sum - dis).toFixed(2)
+})
 const selectPayment = (method) => {
   selectedPayment.value = method
 }
@@ -67,7 +79,29 @@ const loadAddresses = async () => {
     console.error("Failed to fetch user addresses:", error)
   }
 }
+const applyDiscount = async () => {
+  if (!discountCode.value.trim()) return
 
+  isApplyingDiscount.value = true
+  discountError.value = false
+
+  try {
+    const response = await api.get(
+      `discountCodes/validate/${discountCode.value}`,
+    )
+    if (response.data) {
+      discount.value = response.data
+    } else {
+      discountError.value = true
+    }
+  } catch (error) {
+    console.error("Błąd podczas weryfikacji kodu:", error)
+    discountError.value = true
+    discount.value = null
+  } finally {
+    isApplyingDiscount.value = false
+  }
+}
 const findAddressId = () => {
   const found = addresses.value.find((addr) => {
     return (
@@ -83,11 +117,11 @@ const findAddressId = () => {
 
 const handleFinalizeOrder = async () => {
   placedOrderFlag.value = true
+  let paymentAmount = totalOrderSum.value
   if (!selectedPayment.value || !isPaymentValid()) {
     console.log(" niepoprawne dane")
     return
   }
-  console.log(isPaymentValid)
   const matchedId = findAddressId()
   isSubmitting.value = true
   try {
@@ -98,7 +132,7 @@ const handleFinalizeOrder = async () => {
         idProduktu: item.idProduktu,
         ilosc: item.ilosc,
       })),
-      deliveryCost: shippingCost.value,
+      calkowitaKwota: paymentAmount,
       idAdresu: matchedId,
       nowyAdres:
         isLocalDelivery.value || matchedId
@@ -119,7 +153,6 @@ const handleFinalizeOrder = async () => {
     console.log("Wysyłanie zamówienia:", orderPayload)
     if (isLoggedIn.value) await api.post("users/orders", orderPayload)
     else await api.post("users/orders/guest", orderPayload)
-
     clearCart()
     emit("order-placed")
     emit("close")
@@ -260,7 +293,51 @@ onMounted(async () => {
               </div>
             </div>
 
+            <div v-if="isLoggedIn" class="checkout-section mb-4">
+              <h3 class="section-subtitle">Discount Code</h3>
+              <div class="discount-container mt-3">
+                <div
+                  class="discount-input-group"
+                  :class="{ 'error-state': discountError }"
+                >
+                  <input
+                    v-model="discountCode"
+                    type="text"
+                    placeholder="Enter discount code"
+                    class="input-field"
+                    @keyup.enter="applyDiscount"
+                  />
+                  <button
+                    class="btn-secondary check-btn"
+                    @click="applyDiscount"
+                    :disabled="isApplyingDiscount || !discountCode.trim()"
+                  >
+                    {{
+                      isApplyingDiscount
+                        ? "..."
+                        : discount
+                          ? "Applied"
+                          : "Check"
+                    }}
+                  </button>
+                </div>
+                <span
+                  v-if="discountError"
+                  class="error-text mt-2"
+                  style="display: block"
+                >
+                  Invalid or expired discount code.
+                </span>
+              </div>
+            </div>
+
             <div class="order-summary-box p-3 mt-4 mb-2">
+              <div v-if="discount" class="summary-line discount-line mb-2">
+                <span>Discount ({{ discount.kod }}):</span>
+                <span class="discount-price"
+                  >- PLN {{ appliedDiscount.toFixed(2) }}</span
+                >
+              </div>
               <div class="summary-line total-line">
                 <span>Total to Pay:</span>
                 <span class="total-price">PLN {{ totalOrderSum }}</span>
@@ -513,7 +590,58 @@ onMounted(async () => {
   color: #e03a5b;
   font-weight: 500;
 }
+/* --- Style kodu rabatowego --- */
+.discount-input-group {
+  display: flex;
+  gap: 10px;
+  transition: all 0.3s ease;
+}
 
+.discount-input-group .input-field {
+  flex: 1;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    background-color 0.3s ease;
+}
+
+/* Stan błędu przypominający odrzucenie wyboru w DeliverySelection */
+.discount-input-group.error-state .input-field {
+  border-color: #e03a5b;
+  background-color: #fff5f7;
+  box-shadow: 0 0 0 3px rgba(224, 58, 91, 0.1);
+  color: #e03a5b;
+}
+
+.btn-apply {
+  background-color: #151875;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-apply:hover:not(:disabled) {
+  background-color: #3f509e;
+}
+
+.btn-apply:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.discount-line {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #151875;
+}
+
+.discount-price {
+  color: #10b981;
+}
 .order-summary-box {
   background-color: #f8f8fd;
   border: 1px dashed #c2c6e2;

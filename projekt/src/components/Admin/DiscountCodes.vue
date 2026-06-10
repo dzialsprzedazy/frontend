@@ -84,7 +84,7 @@ const generateRandomCode = () => {
   discountCode.value = result
 }
 
-const sendDiscountCodes = () => {
+const sendDiscountCodes = async () => {
   if (selectedUsers.value.length === 0) {
     showAlert({
       type: "warning",
@@ -122,6 +122,7 @@ const sendDiscountCodes = () => {
     discountPercentage: Number(discountPercentage.value),
   }))
 
+  await api.post("discountCodes", payload)
   showAlert({
     type: "success",
     message: `Discount code (${discountPercentage.value}%) sent to ${selectedUsers.value.length} user(s)!`,

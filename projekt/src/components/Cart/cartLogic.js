@@ -1,15 +1,15 @@
-import { ref, computed, watch } from "vue"
+import { ref, computed } from "vue"
 import api from "@/services/axios.js"
 
 const STORAGE_KEY = "shopping_cart"
 const TOKEN_KEY = "token"
 
-export const isLoggedIn = ref(localStorage.getItem(TOKEN_KEY) !== null)
 const userId = JSON.parse(localStorage.getItem("user"))?.id
 const isAddToCartActive = ref(false)
-export const cartItems = ref([])
 const cartId = ref(null)
 
+export const isLoggedIn = ref(localStorage.getItem(TOKEN_KEY) !== null)
+export const cartItems = ref([])
 export const isLocalDelivery = ref(false)
 export const selectedDelivery = ref({
   id: 0,
@@ -54,11 +54,8 @@ export const shippingCost = computed(() => {
     if (!item.product || !item.product.kategorie) continue
 
     const isBook = item.product.kategorie.some((kategoria) => {
-      const nazwaKategorii = kategoria.nazwaKategorii || kategoria.nazwa || ""
-      return (
-        nazwaKategorii.toLowerCase().includes("books") ||
-        nazwaKategorii.toLowerCase().includes("book")
-      )
+      const nazwaKategorii = kategoria.nazwaKategorii || ""
+      return nazwaKategorii.toLowerCase().includes("books")
     })
 
     if (isBook) {
