@@ -88,6 +88,12 @@ const router = createRouter({
       },
     },
     {
+      path: "/admin/review-management",
+      name: "adminReviewManagement",
+      component: () => import("../views/Admin/ReviewManagementView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/profile",
       name: "profile",
       component: () => import("../views/Account/UserProfileView.vue"),

@@ -121,6 +121,40 @@ const handleAdd = async () => {
 onMounted(() => {
   loadProduct()
 })
+
+
+const isUserLoggedIn = computed(() => !!localStorage.getItem("token"))
+const reviewForm = ref({ rating: 5, comment: "" })
+const isSubmittingReview = ref(false)
+
+const setRating = (star) => {
+  reviewForm.value.rating = star
+}
+
+const submitReview = async () => {
+  if (!reviewForm.value.comment.trim()) {
+    showAlert({ type: "error", message: "Comment cannot be empty.", position: "top-right" })
+    return
+  }
+
+  isSubmittingReview.value = true
+  try {
+    await api.post("reviews", {
+      idProduktu: product.value.idProduktu,
+      ocena: reviewForm.value.rating,
+      komentarz: reviewForm.value.comment,
+    })
+    
+    showAlert({ type: "success", message: "Review added successfully!", position: "top-right" })
+    reviewForm.value.comment = ""
+    reviewForm.value.rating = 5
+    await loadProduct() 
+  } catch (error) {
+    showAlert({ type: "error", message: "Failed to submit review.", position: "top-right" })
+  } finally {
+    isSubmittingReview.value = false
+  }
+}
 </script>
 
 <template>
@@ -277,45 +311,60 @@ onMounted(() => {
               </div>
 
               <div v-if="currentTab === 'Reviews'" class="fade-in">
-                <div
-                  v-if="product.opinie && product.opinie.length > 0"
-                  class="reviews-list"
-                >
-                  <div
-                    v-for="review in product.opinie"
-                    :key="review.idOpinii"
-                    class="review-item"
+                
+                <div v-if="isUserLoggedIn" class="add-review-section">
+                  <h4 class="add-review-title">Write a Review</h4>
+                  <div class="rating-select">
+                    <span class="info-label">Your Rating:</span>
+                    <div class="stars-clickable">
+                      <span 
+                        v-for="star in 5" 
+                        :key="star" 
+                        class="star-btn"
+                        :class="{ filled: star <= reviewForm.rating }"
+                        @click="setRating(star)"
+                      >★</span>
+                    </div>
+                  </div>
+                  <textarea 
+                    v-model="reviewForm.comment" 
+                    class="review-textarea" 
+                    placeholder="Share your thoughts about this product..."
+                    rows="4"
+                  ></textarea>
+                  <button 
+                    class="cart-btn" 
+                    style="margin-top: 1rem;" 
+                    @click="submitReview" 
+                    :disabled="isSubmittingReview"
                   >
+                    <i class="fa-solid fa-paper-plane"></i> {{ isSubmittingReview ? 'Submitting...' : 'Submit Review' }}
+                  </button>
+                  <hr class="review-divider" />
+                </div>
+                
+                <div v-else class="login-prompt">
+                  <i class="fa-solid fa-circle-info"></i> Please log in to write a review.
+                  <hr class="review-divider" />
+                </div>
+                <div v-if="product.opinie && product.opinie.length > 0" class="reviews-list">
+                  <div v-for="review in product.opinie" :key="review.idOpinii" class="review-item">
                     <div class="review-header">
-                      <div class="reviewer-avatar">
-                        {{ review.uzytkownikLogin.charAt(0).toUpperCase() }}
-                      </div>
+                      <div class="reviewer-avatar">{{ review.uzytkownikLogin.charAt(0).toUpperCase() }}</div>
                       <div class="reviewer-details">
-                        <strong class="user-login">{{
-                          review.uzytkownikLogin
-                        }}</strong>
+                        <strong class="user-login">{{ review.uzytkownikLogin }}</strong>
                         <div class="review-stars">
-                          <span
-                            v-for="n in 5"
-                            :key="n"
-                            class="star"
-                            :class="{ filled: n <= review.ocena }"
-                            >★</span
-                          >
+                          <span v-for="n in 5" :key="n" class="star" :class="{ filled: n <= review.ocena }">★</span>
                         </div>
                       </div>
-                      <span class="review-date">{{
-                        new Date(review.dataWystawienia).toLocaleDateString()
-                      }}</span>
+                      <span class="review-date">{{ new Date(review.dataWystawienia).toLocaleDateString() }}</span>
                     </div>
                     <p class="review-comment">{{ review.komentarz }}</p>
                   </div>
                 </div>
 
                 <div v-else class="empty-state">
-                  <div class="empty-icon-wrap">
-                    <i class="fa-regular fa-comment-dots"></i>
-                  </div>
+                  <div class="empty-icon-wrap"><i class="fa-regular fa-comment-dots"></i></div>
                   <h3>No reviews</h3>
                   <p>No reviews yet. Be the first to rate this product!</p>
                 </div>
@@ -873,6 +922,63 @@ onMounted(() => {
   line-height: 1.7;
   margin: 0;
   font-size: 1rem;
+}
+
+.add-review-section {
+  background: #f8f9fc;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  border: 1px solid #eae8f5;
+}
+.add-review-title {
+  color: #151875;
+  font-size: 1.2rem;
+  margin: 0 0 1rem 0;
+}
+.rating-select {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.stars-clickable {
+  display: flex;
+  gap: 4px;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.star-btn {
+  color: #eae8f5;
+  transition: color 0.2s;
+}
+.star-btn.filled, .star-btn:hover {
+  color: #ffc416;
+}
+.review-textarea {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #dcdcdc;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+.review-textarea:focus {
+  border-color: #3f509e;
+}
+.review-divider {
+  border: none;
+  border-top: 1px dashed #eae8f5;
+  margin: 2rem 0;
+}
+.login-prompt {
+  color: #8a8fb9;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .empty-state {
