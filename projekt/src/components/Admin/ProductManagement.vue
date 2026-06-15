@@ -282,6 +282,10 @@ onMounted(loadProducts)
               <span class="icon">👥</span>
               <span class="menu-text">User Management</span>
             </li>
+            <li @click="router.push('/admin/review-management')">
+              <span class="icon">⭐</span>
+              <span class="menu-text">Review Management</span>
+            </li>
             <li @click="router.push('/admin/discount-codes')">
               <span class="icon">🏷️</span>
               <span class="menu-text">Discount Codes</span>

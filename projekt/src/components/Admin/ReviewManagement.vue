@@ -5,121 +5,81 @@ import { useRouter } from "vue-router"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
-import AuthorAddModal from "./AuthorAddModal.vue"
-import AuthorEditModal from "./AuthorEditModal.vue"
 
 import api from "@/services/axios.js"
 
 const router = useRouter()
 const { showAlert } = useAlerts()
 
-const authors = ref([])
+const reviews = ref([])
 const isLoading = ref(false)
 const fetchError = ref(null)
 
 const searchQuery = ref("")
 
-const showAddModal = ref(false)
-
-const showEditModal = ref(false)
-const authorToEdit = ref(null)
-
 const showDeleteModal = ref(false)
-const authorToDelete = ref(null)
+const reviewToDelete = ref(null)
 
-const loadAuthors = async () => {
+const loadReviews = async () => {
   isLoading.value = true
   fetchError.value = null
 
   try {
-    const response = await api.get("autors")
-
-    // Sort authors by last name, then first name
-    authors.value = response.data.sort((a, b) => {
-      const nameA = `${a.nazwisko || ""} ${a.imie || ""}`.toLowerCase()
-      const nameB = `${b.nazwisko || ""} ${b.imie || ""}`.toLowerCase()
-      return nameA.localeCompare(nameB)
-    })
+    const response = await api.get("reviews/all")
+    reviews.value = response.data
   } catch (error) {
     if (typeof handleErrors === "function") {
       handleErrors(error, fetchError)
     } else {
-      fetchError.value = {
-        message: "Could not load authors list. Please try again.",
-      }
+      fetchError.value = { message: "Could not load reviews. Please try again." }
     }
   } finally {
     isLoading.value = false
   }
 }
 
-const openEditModal = (author) => {
-  authorToEdit.value = { ...author }
-  showEditModal.value = true
-}
-
 const confirmDelete = (id) => {
-  authorToDelete.value = id
+  reviewToDelete.value = id
   showDeleteModal.value = true
 }
 
 const closeDeleteModal = () => {
   showDeleteModal.value = false
-  authorToDelete.value = null
+  reviewToDelete.value = null
 }
 
 const executeDelete = async () => {
-  if (!authorToDelete.value) return
+  if (!reviewToDelete.value) return
 
   try {
-    await api.delete(`autors/${authorToDelete.value}`)
-    showAlert({
-      type: "success",
-      message: "Author deleted successfully.",
-      position: "top-right",
-    })
-    await loadAuthors()
+    await api.delete(`reviews/${reviewToDelete.value}`)
+    showAlert({ type: "success", message: "Review deleted successfully.", position: "top-right" })
+    await loadReviews()
   } catch (error) {
-    showAlert({
-      type: "error",
-      message: "Failed to delete author.",
-      position: "top-right",
-    })
+    showAlert({ type: "error", message: "Failed to delete review.", position: "top-right" })
   } finally {
     closeDeleteModal()
   }
 }
 
-const filteredAuthors = computed(() => {
-  return authors.value.filter((author) => {
+const filteredReviews = computed(() => {
+  return reviews.value.filter((review) => {
     const query = searchQuery.value.toLowerCase().trim()
-    const fullName =
-      `${author.imie || ""} ${author.nazwisko || ""}`.toLowerCase()
-
-    return fullName.includes(query)
+    const matchProduct = review.nazwaProduktu?.toLowerCase().includes(query)
+    const matchUser = review.uzytkownikLogin?.toLowerCase().includes(query)
+    const matchComment = review.komentarz?.toLowerCase().includes(query)
+    return matchProduct || matchUser || matchComment
   })
 })
-
-const getInitials = (imie, nazwisko) => {
-  const first = imie ? imie.charAt(0).toUpperCase() : ""
-  const last = nazwisko ? nazwisko.charAt(0).toUpperCase() : ""
-  return `${first}${last}` || "?"
-}
 
 const handleLogout = () => {
   localStorage.removeItem("token")
   localStorage.removeItem("user")
-
-  showAlert({
-    type: "success",
-    message: "Successfully logged out.",
-    position: "top-right",
-  })
-
+  showAlert({ type: "success", message: "Successfully logged out.", position: "top-right" })
   router.push("/login")
 }
 
-onMounted(loadAuthors)
+onMounted(loadReviews)
 </script>
 
 <template>
@@ -129,7 +89,7 @@ onMounted(loadAuthors)
         <h1 class="header-title">Admin Panel</h1>
         <p class="breadcrumbs">
           Home <span class="dot-separator">•</span>
-          <span class="active-page">Author Management</span>
+          <span class="active-page">Review Management</span>
         </p>
       </div>
     </div>
@@ -138,124 +98,64 @@ onMounted(loadAuthors)
       <aside class="sidebar">
         <div class="sidebar-card">
           <ul class="menu-list">
-            <li @click="router.push('/admin')">
-              <span class="icon">🏠</span>
-              <span class="menu-text">Dashboard</span>
-            </li>
-            <li>
-              <span class="icon">📦</span>
-              <span class="menu-text">Order Management</span>
-            </li>
-            <li @click="router.push('/admin/product-management')">
-              <span class="icon">🛍️</span>
-              <span class="menu-text">Product Management</span>
-            </li>
-            <li class="active" @click="router.push('/admin/author-management')">
-              <span class="icon">✍️</span>
-              <span class="menu-text">Author Management</span>
-            </li>
-            <li @click="router.push('/admin/tag-management')">
-              <span class="icon menu-icon-fix"
-                ><i class="fa-solid fa-hashtag"></i
-              ></span>
-              <span class="menu-text">Tag Management</span>
-            </li>
-            <li @click="router.push('/admin/user-management')">
-              <span class="icon">👥</span>
-              <span class="menu-text">User Management</span>
-            </li>
-            <li @click="router.push('/admin/review-management')">
-              <span class="icon">⭐</span>
-              <span class="menu-text">Review Management</span>
-            </li>
-            <li @click="router.push('/admin/discount-codes')">
-              <span class="icon">🏷️</span>
-              <span class="menu-text">Discount Codes</span>
-            </li>
+            <li @click="router.push('/admin')"><span class="icon">🏠</span><span class="menu-text">Dashboard</span></li>
+            <li><span class="icon">📦</span><span class="menu-text">Order Management</span></li>
+            <li @click="router.push('/admin/product-management')"><span class="icon">🛍️</span><span class="menu-text">Product Management</span></li>
+            <li @click="router.push('/admin/author-management')"><span class="icon">✍️</span><span class="menu-text">Author Management</span></li>
+            <li @click="router.push('/admin/tag-management')"><span class="icon menu-icon-fix"><i class="fa-solid fa-hashtag"></i></span><span class="menu-text">Tag Management</span></li>
+            <li @click="router.push('/admin/user-management')"><span class="icon">👥</span><span class="menu-text">User Management</span></li>
+            <li class="active"><span class="icon">⭐</span><span class="menu-text">Review Management</span></li>
+            <li @click="router.push('/admin/discount-codes')"><span class="icon">🏷️</span><span class="menu-text">Discount Codes</span></li>
+            
+            
             <li class="divider"></li>
-            <li @click="handleLogout" class="logout-item">
-              <span class="icon">🚪</span>
-              <span class="menu-text">Sign Out</span>
-            </li>
+            <li @click="handleLogout" class="logout-item"><span class="icon">🚪</span><span class="menu-text">Sign Out</span></li>
           </ul>
         </div>
       </aside>
 
       <main class="content-area">
-        <ErrorCard
-          v-if="fetchError"
-          :message="fetchError.message"
-          @retry="loadAuthors"
-        />
+        <ErrorCard v-if="fetchError" :message="fetchError.message" @retry="loadReviews" />
 
         <div v-else-if="isLoading" class="dashboard-card loading-state">
           <div class="loader-circle"></div>
-          <span>Fetching authors data...</span>
+          <span>Fetching reviews data...</span>
         </div>
 
         <div v-else class="animated-content">
           <div class="modern-toolbar">
             <div class="search-wrapper">
               <i class="fa-solid fa-magnifying-glass"></i>
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Search by first or last name..."
-              />
-            </div>
-
-            <div class="header-actions">
-              <button class="action-btn add" @click="showAddModal = true">
-                <i class="fa-solid fa-plus"></i>
-                <span>Add Author</span>
-              </button>
+              <input v-model="searchQuery" type="text" placeholder="Search by product, user or content..." />
             </div>
           </div>
 
           <div class="catalog-section">
             <div class="catalog-header">
-              <h2>
-                Authors Catalog
-                <span class="count-tag">{{ filteredAuthors.length }}</span>
-              </h2>
+              <h2>Reviews Catalog <span class="count-tag">{{ filteredReviews.length }}</span></h2>
             </div>
 
             <div class="author-list-container">
-              <div v-if="filteredAuthors.length === 0" class="empty-state">
-                <img
-                  src="https://cdn-icons-png.flaticon.com/512/4076/4076432.png"
-                  alt="Empty"
-                />
-                <p>No authors found.</p>
+              <div v-if="filteredReviews.length === 0" class="empty-state">
+                <i class="fa-regular fa-comment-dots" style="font-size: 3rem; color: #8a8fb9; margin-bottom: 1rem;"></i>
+                <p>No reviews found.</p>
               </div>
 
-              <div
-                v-for="author in filteredAuthors"
-                :key="author.idAutora"
-                class="author-list-item"
-              >
-                <div class="author-info">
-                  <div class="author-initials">
-                    {{ getInitials(author.imie, author.nazwisko) }}
+              <div v-for="review in filteredReviews" :key="review.idOpinii" class="author-list-item review-row">
+                <div class="review-details-wrap">
+                  <div class="review-meta">
+                    <span class="review-product">{{ review.nazwaProduktu }}</span>
+                    <span class="review-user"><i class="fa-solid fa-user" style="font-size: 0.8rem"></i> {{ review.uzytkownikLogin }}</span>
+                    <span class="review-stars">
+                      <span v-for="n in 5" :key="n" :style="{color: n <= review.ocena ? '#ffc416' : '#eae8f5'}">★</span>
+                    </span>
+                    <span class="review-date">{{ new Date(review.dataWystawienia).toLocaleDateString() }}</span>
                   </div>
-                  <span class="author-name"
-                    >{{ author.imie }} {{ author.nazwisko }}</span
-                  >
+                  <p class="review-text">"{{ review.komentarz }}"</p>
                 </div>
 
                 <div class="product-actions">
-                  <button
-                    class="icon-btn edit"
-                    title="Edit"
-                    @click="openEditModal(author)"
-                  >
-                    <i class="fa-solid fa-pen"></i>
-                  </button>
-                  <button
-                    class="icon-btn delete"
-                    title="Delete"
-                    @click="confirmDelete(author.idAutora)"
-                  >
+                  <button class="icon-btn delete" title="Delete Review" @click="confirmDelete(review.idOpinii)">
                     <i class="fa-solid fa-trash"></i>
                   </button>
                 </div>
@@ -266,40 +166,16 @@ onMounted(loadAuthors)
       </main>
     </div>
 
-    <AuthorAddModal
-      :show="showAddModal"
-      @close="showAddModal = false"
-      @author-added="loadAuthors"
-    />
-
-    <AuthorEditModal
-      :show="showEditModal"
-      :author="authorToEdit"
-      @close="showEditModal = false"
-      @author-updated="loadAuthors"
-    />
-
     <Transition name="modal">
-      <div
-        v-if="showDeleteModal"
-        class="modal-overlay"
-        @click.self="closeDeleteModal"
-      >
+      <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
         <div class="modal-box confirm-box">
           <div class="modal-header">
-            <h3>Delete Author</h3>
-            <button class="close-btn" @click="closeDeleteModal">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
+            <h3>Delete Review</h3>
+            <button class="close-btn" @click="closeDeleteModal"><i class="fa-solid fa-xmark"></i></button>
           </div>
-
           <div class="modal-body">
-            <p class="confirm-text">
-              Are you sure you want to delete this author? This action cannot be
-              undone.
-            </p>
+            <p class="confirm-text">Are you sure you want to delete this review? This action cannot be undone.</p>
           </div>
-
           <div class="modal-footer">
             <button class="btn-text" @click="closeDeleteModal">Cancel</button>
             <button class="btn-primary btn-danger" @click="executeDelete">
@@ -312,16 +188,12 @@ onMounted(loadAuthors)
   </div>
 </template>
 
-<style>
-:root {
-  --nv-z: 9999;
-}
-.Notivue__wrapper {
-  z-index: 9999 !important;
-}
-</style>
-
 <style scoped>
+
+
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+
+
 .page-wrapper {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: #ffffff;
@@ -812,32 +684,48 @@ onMounted(loadAuthors)
   box-shadow: 0 4px 12px rgba(224, 58, 91, 0.2) !important;
 }
 
-@media (max-width: 1024px) {
-  .modern-toolbar {
-    grid-template-columns: 1fr;
-  }
-  .header-actions {
-    justify-content: flex-end;
-  }
+.review-row {
+  align-items: flex-start !important;
+  flex-direction: row;
 }
 
-@media (max-width: 950px) {
-  .main-content {
-    grid-template-columns: 1fr;
-  }
-  .header-banner {
-    padding: 2.5rem 0;
-  }
+.review-details-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 90%;
 }
 
-@media (max-width: 768px) {
-  .author-list-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-  .product-actions {
-    align-self: flex-end;
-  }
+.review-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.review-product {
+  font-weight: 700;
+  color: #151875;
+  font-size: 1rem;
+}
+
+.review-user {
+  color: #3f509e;
+  font-weight: 600;
+  background: #f6f5ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.review-date {
+  color: #8a8fb9;
+}
+
+.review-text {
+  color: #4a405c;
+  margin: 0;
+  font-style: italic;
+  line-height: 1.5;
 }
 </style>
