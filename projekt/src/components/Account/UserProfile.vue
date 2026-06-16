@@ -11,6 +11,7 @@ const userName = ref("")
 const userSurname = ref("")
 const userEmail = ref("")
 const phoneNumber = ref("")
+const isAdmin = ref(false)
 
 const originalData = ref({})
 
@@ -19,33 +20,9 @@ const isLoading = ref(false)
 
 const activeTab = ref("dashboard")
 
-const selectedOrder = ref(null);
-const showOrderDetails = ref(false);
-const expandedOrderId = ref(null);
-
-
-const openOrderDetails = async (orderId) => {
-  
-  if (expandedOrderId.value === orderId) {
-    expandedOrderId.value = null;
-    return;
-  }
-
-  try {
-    isLoading.value = true;
-    const response = await api.get(`users/orders/${orderId}`);
-    
-    selectedOrder.value = response.data;
-
-    expandedOrderId.value = orderId;
-    
-    showOrderDetails.value = true;
-  } catch (error) {
-    showAlert({ type: "error", message: "Could not load order details." });
-  } finally {
-    isLoading.value = false;
-  }
-};
+const selectedOrder = ref(null)
+const showOrderDetails = ref(false)
+const expandedOrderId = ref(null)
 
 const addresses = ref([])
 const showAddressForm = ref(false)
@@ -62,6 +39,9 @@ const newAddress = ref({
 
 const orders = ref([])
 const isLoadingOrders = ref(false)
+
+const discountCodes = ref([])
+const isLoadingCodes = ref(false)
 
 const getOrderStatusInfo = (statusId) => {
   const statuses = {
@@ -104,6 +84,38 @@ const loadOrders = async () => {
   }
 }
 
+const loadDiscountCodes = async () => {
+  try {
+    isLoadingCodes.value = true
+    const response = await api.get("DiscountCodes/my-codes")
+    discountCodes.value = response.data
+  } catch (error) {
+    showAlert({ type: "error", message: "Failed to load discount codes." })
+  } finally {
+    isLoadingCodes.value = false
+  }
+}
+
+const openOrderDetails = async (orderId) => {
+  if (expandedOrderId.value === orderId) {
+    expandedOrderId.value = null
+    return
+  }
+
+  try {
+    isLoading.value = true
+    const response = await api.get(`users/orders/${orderId}`)
+    
+    selectedOrder.value = response.data
+    expandedOrderId.value = orderId
+    showOrderDetails.value = true
+  } catch (error) {
+    showAlert({ type: "error", message: "Could not load order details." })
+  } finally {
+    isLoading.value = false
+  }
+}
+
 const openAddAddress = () => {
   isEditingAddress.value = false
   currentAddressId.value = null
@@ -130,31 +142,24 @@ const openEditAddress = (addr) => {
   showAddressForm.value = true
 }
 
-
-
-  const saveAddress = async () => {
-
-  const { miasto, ulica, numerBudynku, kodPocztowy } = newAddress.value;
+const saveAddress = async () => {
+  const { miasto, ulica, numerBudynku, kodPocztowy } = newAddress.value
   
   if (!miasto.trim() || !ulica.trim() || !numerBudynku.trim() || !kodPocztowy.trim()) {
-    showAlert({ type: "error", message: "Uzupełnij wymagane pola!" });
-    return;
+    showAlert({ type: "error", message: "Uzupełnij wymagane pola!" })
+    return
   }
 
-  const zipRegex = /^\d{2}-\d{3}$/;
+  const zipRegex = /^\d{2}-\d{3}$/
   if (!zipRegex.test(kodPocztowy)) {
-    showAlert({ type: "error", message: "Kod pocztowy musi mieć format 00-000" });
-    return;
+    showAlert({ type: "error", message: "Kod pocztowy musi mieć format 00-000" })
+    return
   }
-
 
   try {
     isLoading.value = true
     if (isEditingAddress.value) {
-      await api.put(
-        `users/addresses/${currentAddressId.value}`,
-        newAddress.value,
-      )
+      await api.put(`users/addresses/${currentAddressId.value}`, newAddress.value)
       showAlert({ type: "success", message: "Address updated successfully!" })
     } else {
       await api.post("users/addresses", newAddress.value)
@@ -185,6 +190,7 @@ const setActiveTab = (tab) => {
   activeTab.value = tab
   if (tab === "addresses") loadAddresses()
   if (tab === "orders") loadOrders()
+  if (tab === "discount-codes") loadDiscountCodes()
 }
 
 const loadUserDetails = async () => {
@@ -196,6 +202,8 @@ const loadUserDetails = async () => {
     userSurname.value = data.nazwisko || ""
     userEmail.value = data.email || ""
     phoneNumber.value = data.telefon || ""
+
+    isAdmin.value = data.roles && data.roles.includes("Admin")
   } catch (error) {
     if (error.response?.status === 401) {
       router.push("/login")
@@ -208,6 +216,10 @@ const loadUserDetails = async () => {
       position: "top-right",
     })
   }
+}
+
+const switchToAdmin = () => {
+  router.push("/admin")
 }
 
 const startEditing = () => {
@@ -310,6 +322,14 @@ const changePassword = async () => {
   }
 }
 
+const copyToClipboard = (code) => {
+  navigator.clipboard.writeText(code).then(() => {
+    showAlert({ type: "success", message: "Code copied to clipboard!", position: "top-right" })
+  }).catch(() => {
+    showAlert({ type: "error", message: "Failed to copy code.", position: "top-right" })
+  })
+}
+
 onMounted(loadUserDetails)
 </script>
 
@@ -321,7 +341,9 @@ onMounted(loadUserDetails)
         <p class="breadcrumbs">
           Home <span class="dot-separator">•</span>
           <span class="active-page">{{
-            activeTab === "dashboard" ? "Dashboard" : activeTab === "orders" ? "Order History" : "Saved Addresses"
+            activeTab === "dashboard" ? "Dashboard" : 
+            activeTab === "orders" ? "Order History" : 
+            activeTab === "discount-codes" ? "Discount Codes" : "Saved Addresses"
           }}</span>
         </p>
       </div>
@@ -331,26 +353,21 @@ onMounted(loadUserDetails)
       <aside class="sidebar">
         <div class="sidebar-card">
           <ul class="menu-list">
-            <li
-              :class="{ active: activeTab === 'dashboard' }"
-              @click="setActiveTab('dashboard')"
-            >
+            <li :class="{ active: activeTab === 'dashboard' }" @click="setActiveTab('dashboard')">
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
             </li>
-            <li
-              :class="{ active: activeTab === 'orders' }"
-              @click="setActiveTab('orders')"
-            >
+            <li :class="{ active: activeTab === 'orders' }" @click="setActiveTab('orders')">
               <span class="icon">📦</span>
               <span class="menu-text">Order History</span>
             </li>
-            <li
-              :class="{ active: activeTab === 'addresses' }"
-              @click="setActiveTab('addresses')"
-            >
+            <li :class="{ active: activeTab === 'addresses' }" @click="setActiveTab('addresses')">
               <span class="icon">📍</span>
               <span class="menu-text">Saved Addresses</span>
+            </li>
+            <li :class="{ active: activeTab === 'discount-codes' }" @click="setActiveTab('discount-codes')">
+              <span class="icon">🏷️</span>
+              <span class="menu-text">My Discount Codes</span>
             </li>
             <li class="divider"></li>
             <li @click="handleLogout" class="logout-item">
@@ -374,9 +391,19 @@ onMounted(loadUserDetails)
               <p>{{ userEmail }}</p>
             </div>
 
-            <button v-if="!isEditing" class="btn-primary" @click="startEditing">
-              Edit Profile
-            </button>
+            <div v-if="!isEditing" class="action-buttons">
+              <button class="btn-primary" @click="startEditing">
+                Edit Profile
+              </button>
+              <button 
+                v-if="isAdmin" 
+                class="btn-outline" 
+                style="border-color: #3f509e; color: #3f509e;" 
+                @click="switchToAdmin"
+              >
+                Switch to Admin Dashboard
+              </button>
+            </div>
 
             <div v-else class="action-buttons">
               <button
@@ -494,7 +521,6 @@ onMounted(loadUserDetails)
           </div>
         </div>
 
-        
         <div v-else-if="activeTab === 'orders'" class="dashboard-card">
           <div class="profile-header">
             <div class="profile-title">
@@ -515,7 +541,6 @@ onMounted(loadUserDetails)
                 class="security-flex"
                 style="flex-direction: column; align-items: stretch; gap: 0; padding: 0; overflow: hidden;"
               >
-                
                 <div style="padding: 1.5rem;">
                   <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eae8f5; padding-bottom: 1rem; margin-bottom: 1rem;">
                     <div>
@@ -535,8 +560,6 @@ onMounted(loadUserDetails)
                   </div>
                   <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span class="detail-value">Total: <strong>{{ order.calkowitaKwota.toFixed(2) }} PLN</strong></span>
-                    
-                    
                     <button 
                       class="btn-outline" 
                       :class="{ 'active-btn': expandedOrderId === order.idZamowienia }"
@@ -547,7 +570,6 @@ onMounted(loadUserDetails)
                   </div>
                 </div>
 
-                
                 <Transition name="details">
                   <div 
                     v-if="expandedOrderId === order.idZamowienia && selectedOrder" 
@@ -584,9 +606,7 @@ onMounted(loadUserDetails)
           </div>
         </div>
 
-        <!-- ZAKŁADKA ADDRESSES -->
         <div v-else-if="activeTab === 'addresses'" class="dashboard-card">
-          <!-- Pozostała część kodu bez zmian -->
           <div class="profile-header">
             <div class="profile-title">
               <h2>Your Saved Addresses</h2>
@@ -666,6 +686,43 @@ onMounted(loadUserDetails)
             </div>
           </div>
         </div>
+
+        <div v-else-if="activeTab === 'discount-codes'" class="dashboard-card">
+          <div class="profile-header">
+            <div class="profile-title">
+              <h2>My Discount Codes</h2>
+              <p>Available codes for your purchases</p>
+            </div>
+          </div>
+
+          <div class="details-section">
+            <div v-if="isLoadingCodes" class="empty-state" style="text-align: center; padding: 3rem">
+              <p class="detail-label">Loading codes...</p>
+            </div>
+            
+            <div v-else-if="discountCodes.length > 0" class="details-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+              <div 
+                v-for="code in discountCodes" 
+                :key="code.idKodu" 
+                class="discount-card"
+              >
+                <div class="discount-percentage">
+                  {{ code.znizkaProcentowa }}% OFF
+                </div>
+                <div class="discount-details">
+                  <p class="discount-code-text">{{ code.kod }}</p>
+                  <button class="btn-copy" @click="copyToClipboard(code.kod)">Copy Code</button>
+                </div>
+              </div>
+            </div>
+            
+            <div v-else class="empty-state" style="text-align: center; padding: 3rem">
+              <span style="font-size: 3rem; display: block; margin-bottom: 1rem">🎟️</span>
+              <p class="detail-label">You don't have any discount codes yet.</p>
+            </div>
+          </div>
+        </div>
+
       </main>
     </div>
   </div>
@@ -981,7 +1038,6 @@ onMounted(loadUserDetails)
   color: #e03a5b;
 }
 
-
 .details-enter-active,
 .details-leave-active {
   transition: all 0.3s ease-in-out;
@@ -1009,11 +1065,63 @@ onMounted(loadUserDetails)
   background-color: #f6f5ff;
 }
 
-
 .active-btn {
   background-color: #3f509e !important;
   color: white !important;
   border-color: #3f509e !important;
+}
+
+.discount-card {
+  display: flex;
+  background-color: #fbfbfe;
+  border: 2px dashed #3f509e;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.discount-percentage {
+  background-color: #3f509e;
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 800;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+}
+
+.discount-details {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.discount-code-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #151875;
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+.btn-copy {
+  background: none;
+  border: none;
+  color: #fb2e86;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  transition: opacity 0.2s;
+}
+
+.btn-copy:hover {
+  opacity: 0.8;
 }
 
 @media (max-width: 850px) {
@@ -1044,6 +1152,15 @@ onMounted(loadUserDetails)
     flex-direction: column;
     align-items: flex-start;
     gap: 1.5rem;
+  }
+  
+  .discount-card {
+    flex-direction: column;
+  }
+  
+  .discount-percentage {
+    min-width: auto;
+    padding: 1rem;
   }
 }
 </style>

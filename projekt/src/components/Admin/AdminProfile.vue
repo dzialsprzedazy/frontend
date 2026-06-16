@@ -162,7 +162,30 @@ const handleLogout = () => {
   router.push("/login")
 }
 
-onMounted(loadUserDetails)
+const switchToUser = () => {
+  router.push("/profile")
+}
+
+onMounted(async () => {
+  await loadUserDetails()
+
+  const savedTasks = localStorage.getItem("admin_tasks")
+  if (savedTasks) {
+    try {
+      const tasks = JSON.parse(savedTasks)
+      const pendingTasks = tasks.filter(t => t.status !== "done").length
+      
+      if (pendingTasks > 0) {
+        showAlert({ 
+          type: "info", 
+          message: `Masz ${pendingTasks} zadań do zrobienia w panelu Task Management.` 
+        })
+      }
+    } catch (e) {
+      console.error("Błąd parsowania zadań", e)
+    }
+  }
+})
 </script>
 
 <template>
@@ -184,6 +207,10 @@ onMounted(loadUserDetails)
             <li class="active" @click="router.push('/admin')">
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
+            </li>
+            <li @click="router.push('/admin/task-management')">
+              <span class="icon">📋</span>
+              <span class="menu-text">Task Management</span>
             </li>
             <li @click="router.push('/admin/product-management')">
               <span class="icon">🛍️</span>
@@ -244,25 +271,42 @@ onMounted(loadUserDetails)
               <p class="admin-badge">Administrator</p>
               <p class="email-text">{{ adminEmail }}</p>
             </div>
-            <button
-              v-if="!isEditing"
-              class="btn-primary"
-              @click="isEditing = true"
-            >
-              <i class="fa-solid fa-pen" style="margin-right: 6px"></i> Edit
-              Details
-            </button>
+            
+            <div v-if="!isEditing" class="action-buttons" style="margin-top: 0;">
+              <button
+                class="btn-primary"
+                @click="isEditing = true"
+              >
+                <i class="fa-solid fa-pen" style="margin-right: 6px"></i> Edit
+                Details
+              </button>
+              <button 
+                class="btn-outline" 
+                style="border-color: #3f509e; color: #3f509e;" 
+                @click="switchToUser"
+              >
+                Switch to User Dashboard
+              </button>
+            </div>
 
-            <button
-              v-else
-              class="btn-primary"
-              @click="saveUserDetails"
-              :disabled="isLoading"
-            >
-              <i v-if="isLoading" class="fa-solid fa-spinner fa-spin"></i>
-              <i v-else class="fa-solid fa-check"></i>
-              {{ isLoading ? "Saving..." : "Save Details" }}
-            </button>
+            <div v-else class="action-buttons" style="margin-top: 0;">
+              <button
+                class="btn-outline"
+                @click="isEditing = false"
+                :disabled="isLoading"
+              >
+                Cancel
+              </button>
+              <button
+                class="btn-primary"
+                @click="saveUserDetails"
+                :disabled="isLoading"
+              >
+                <i v-if="isLoading" class="fa-solid fa-spinner fa-spin"></i>
+                <i v-else class="fa-solid fa-check"></i>
+                {{ isLoading ? "Saving..." : "Save Details" }}
+              </button>
+            </div>
           </div>
 
           <div

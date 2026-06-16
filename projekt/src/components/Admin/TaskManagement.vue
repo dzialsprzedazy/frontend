@@ -1,0 +1,821 @@
+<script setup>
+import { ref, onMounted, computed } from "vue"
+import { useRouter } from "vue-router"
+import { useAlerts } from "@/components/alerts/useAlerts.js"
+import api from "@/services/axios.js"
+
+const router = useRouter()
+const { showAlert } = useAlerts()
+
+const tasks = ref([])
+const showModal = ref(false)
+const isEditing = ref(false)
+const currentTaskId = ref(null)
+const selectedTasks = ref([])
+
+const taskForm = ref({
+  title: "",
+  description: "",
+  status: "todo"
+})
+
+const loadTasks = async () => {
+  try {
+    const response = await api.get("AdminTasks")
+    tasks.value = response.data
+  } catch (error) {
+    showAlert({ type: "error", message: "Nie udało się pobrać zadań." })
+  }
+}
+
+const openAddModal = () => {
+  isEditing.value = false
+  currentTaskId.value = null
+  taskForm.value = { title: "", description: "", status: "todo" }
+  showModal.value = true
+}
+
+const openEditModal = (task) => {
+  isEditing.value = true
+  currentTaskId.value = task.id
+  taskForm.value = { ...task }
+  showModal.value = true
+}
+
+const closeModal = () => {
+  showModal.value = false
+}
+
+const saveTask = async () => {
+  if (!taskForm.value.title.trim()) {
+    showAlert({ type: "warning", message: "Tytuł zadania jest wymagany." })
+    return
+  }
+
+  try {
+    if (isEditing.value) {
+      await api.put(`AdminTasks/${currentTaskId.value}`, taskForm.value)
+      showAlert({ type: "success", message: "Zadanie zaktualizowane." })
+    } else {
+      await api.post("AdminTasks", taskForm.value)
+      showAlert({ type: "success", message: "Zadanie dodane." })
+    }
+    
+    await loadTasks()
+    closeModal()
+  } catch (error) {
+    showAlert({ type: "error", message: "Błąd podczas zapisywania zadania." })
+  }
+}
+
+const deleteTask = async (id) => {
+  if (!confirm("Czy na pewno chcesz usunąć to zadanie?")) return
+  
+  try {
+    await api.delete(`AdminTasks/${id}`)
+    showAlert({ type: "success", message: "Zadanie usunięte." })
+    await loadTasks()
+  } catch (error) {
+    showAlert({ type: "error", message: "Błąd podczas usuwania zadania." })
+  }
+}
+
+const deleteSelectedTasks = async () => {
+  if (!confirm(`Czy na pewno chcesz usunąć zaznaczone zadania (${selectedTasks.value.length})?`)) return
+
+  try {
+    await Promise.all(selectedTasks.value.map(id => api.delete(`AdminTasks/${id}`)))
+    showAlert({ type: "success", message: "Zaznaczone zadania zostały usunięte." })
+    selectedTasks.value = []
+    await loadTasks()
+  } catch (error) {
+    showAlert({ type: "error", message: "Błąd podczas usuwania zadań." })
+  }
+}
+
+const changeTaskStatus = async (task, newStatus) => {
+  try {
+    const updatedTask = { ...task, status: newStatus }
+    await api.put(`AdminTasks/${task.id}`, updatedTask)
+    showAlert({ type: "info", message: `Zadanie przeniesione do: ${newStatus.replace('-', ' ')}.` })
+    await loadTasks()
+  } catch (error) {
+    showAlert({ type: "error", message: "Błąd zmiany statusu." })
+  }
+}
+
+const todoTasks = computed(() => tasks.value.filter(t => t.status === "todo"))
+const inProgressTasks = computed(() => tasks.value.filter(t => t.status === "in-progress"))
+const inReviewTasks = computed(() => tasks.value.filter(t => t.status === "in-review"))
+const doneTasks = computed(() => tasks.value.filter(t => t.status === "done"))
+
+const handleLogout = () => {
+  localStorage.removeItem("token")
+  localStorage.removeItem("user")
+  showAlert({ type: "success", message: "Successfully logged out.", position: "top-right" })
+  router.push("/login")
+}
+
+onMounted(async () => {
+  await loadTasks()
+  
+  const pendingTasks = tasks.value.filter(t => t.status !== "done").length
+  if (pendingTasks > 0) {
+    showAlert({ 
+      type: "info", 
+      message: `Masz ${pendingTasks} zadań do zrobienia na tablicy.` 
+    })
+  }
+})
+</script>
+
+<template>
+  <div class="page-wrapper">
+    <div class="header-banner">
+      <div class="container">
+        <h1 class="header-title">Admin Panel</h1>
+        <p class="breadcrumbs">
+          Home <span class="dot-separator">•</span>
+          <span class="active-page">Task Management</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="container main-content">
+      <aside class="sidebar">
+        <div class="sidebar-card">
+          <ul class="menu-list">
+            <li @click="router.push('/admin')">
+              <span class="icon">🏠</span>
+              <span class="menu-text">Dashboard</span>
+            </li>
+            <li class="active" @click="router.push('/admin/task-management')">
+              <span class="icon">📋</span>
+              <span class="menu-text">Task Management</span>
+            </li>
+            <li @click="router.push('/admin/product-management')">
+              <span class="icon">🛍️</span>
+              <span class="menu-text">Product Management</span>
+            </li>
+            <li @click="router.push('/admin/author-management')">
+              <span class="icon">✍️</span>
+              <span class="menu-text">Author Management</span>
+            </li>
+            <li @click="router.push('/admin/tag-management')">
+              <span class="icon"><i class="fa-solid fa-hashtag"></i></span>
+              <span class="menu-text">Tag Management</span>
+            </li>
+            <li @click="router.push('/admin/user-management')">
+              <span class="icon">👥</span>
+              <span class="menu-text">User Management</span>
+            </li>
+            <li @click="router.push('/admin/review-management')">
+              <span class="icon">⭐</span>
+              <span class="menu-text">Review Management</span>
+            </li>
+            <li @click="router.push('/admin/discount-codes')">
+              <span class="icon">🏷️</span>
+              <span class="menu-text">Discount Codes</span>
+            </li>
+            <li class="divider"></li>
+            <li @click="handleLogout" class="logout-item">
+              <span class="icon">🚪</span>
+              <span class="menu-text">Sign Out</span>
+            </li>
+          </ul>
+        </div>
+      </aside>
+
+      <main class="content-area">
+        <div class="modern-toolbar">
+          <div class="header-title-group">
+            <h2 class="section-title">TODO Board</h2>
+            <span class="badge">{{ tasks.length }}</span>
+          </div>
+          <div class="toolbar-actions">
+            <button v-if="selectedTasks.length > 0" class="toolbar-btn delete-bulk" @click="deleteSelectedTasks">
+              <i class="fa-solid fa-trash"></i> Usuń zaznaczone ({{ selectedTasks.length }})
+            </button>
+            <button class="toolbar-btn add" @click="openAddModal">
+              <i class="fa-solid fa-plus"></i> Add Task
+            </button>
+          </div>
+        </div>
+
+        <div class="kanban-board">
+          <div class="kanban-column">
+            <div class="column-header">
+              <h3 class="column-title">To Do</h3>
+              <span class="badge">{{ todoTasks.length }}</span>
+            </div>
+            <div class="task-list">
+              <div v-for="task in todoTasks" :key="task.id" class="task-card">
+                <div class="task-card-header">
+                  <input type="checkbox" :value="task.id" v-model="selectedTasks" class="task-checkbox" />
+                  <h4 class="task-title">{{ task.title }}</h4>
+                </div>
+                <p class="task-desc">{{ task.description }}</p>
+                <div class="task-actions">
+                  <button class="action-btn edit" @click="openEditModal(task)" title="Edit">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button class="action-btn delete" @click="deleteTask(task.id)" title="Delete">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                  <button class="action-btn move" @click="changeTaskStatus(task, 'in-progress')" title="Start">
+                    <i class="fa-solid fa-arrow-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div v-if="todoTasks.length === 0" class="empty-column">Brak zadań</div>
+            </div>
+          </div>
+
+          <div class="kanban-column">
+            <div class="column-header">
+              <h3 class="column-title">In Progress</h3>
+              <span class="badge">{{ inProgressTasks.length }}</span>
+            </div>
+            <div class="task-list">
+              <div v-for="task in inProgressTasks" :key="task.id" class="task-card">
+                <div class="task-card-header">
+                  <input type="checkbox" :value="task.id" v-model="selectedTasks" class="task-checkbox" />
+                  <h4 class="task-title">{{ task.title }}</h4>
+                </div>
+                <p class="task-desc">{{ task.description }}</p>
+                <div class="task-actions">
+                  <button class="action-btn move" @click="changeTaskStatus(task, 'todo')" title="Back">
+                    <i class="fa-solid fa-arrow-left"></i>
+                  </button>
+                  <button class="action-btn edit" @click="openEditModal(task)" title="Edit">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button class="action-btn move" @click="changeTaskStatus(task, 'in-review')" title="Review">
+                    <i class="fa-solid fa-arrow-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div v-if="inProgressTasks.length === 0" class="empty-column">Brak zadań</div>
+            </div>
+          </div>
+
+          <div class="kanban-column">
+            <div class="column-header">
+              <h3 class="column-title">In Review</h3>
+              <span class="badge">{{ inReviewTasks.length }}</span>
+            </div>
+            <div class="task-list">
+              <div v-for="task in inReviewTasks" :key="task.id" class="task-card">
+                <div class="task-card-header">
+                  <input type="checkbox" :value="task.id" v-model="selectedTasks" class="task-checkbox" />
+                  <h4 class="task-title">{{ task.title }}</h4>
+                </div>
+                <p class="task-desc">{{ task.description }}</p>
+                <div class="task-actions">
+                  <button class="action-btn move" @click="changeTaskStatus(task, 'in-progress')" title="Back to Progress">
+                    <i class="fa-solid fa-arrow-left"></i>
+                  </button>
+                  <button class="action-btn edit" @click="openEditModal(task)" title="Edit">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button class="action-btn move" @click="changeTaskStatus(task, 'done')" title="Done">
+                    <i class="fa-solid fa-check"></i>
+                  </button>
+                </div>
+              </div>
+              <div v-if="inReviewTasks.length === 0" class="empty-column">Brak zadań</div>
+            </div>
+          </div>
+
+          <div class="kanban-column">
+            <div class="column-header">
+              <h3 class="column-title">Done</h3>
+              <span class="badge">{{ doneTasks.length }}</span>
+            </div>
+            <div class="task-list">
+              <div v-for="task in doneTasks" :key="task.id" class="task-card completed">
+                <div class="task-card-header">
+                  <input type="checkbox" :value="task.id" v-model="selectedTasks" class="task-checkbox" />
+                  <h4 class="task-title">{{ task.title }}</h4>
+                </div>
+                <p class="task-desc">{{ task.description }}</p>
+                <div class="task-actions">
+                  <button class="action-btn move" @click="changeTaskStatus(task, 'in-review')" title="Reopen">
+                    <i class="fa-solid fa-rotate-left"></i>
+                  </button>
+                  <button class="action-btn delete" @click="deleteTask(task.id)" title="Delete">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div v-if="doneTasks.length === 0" class="empty-column">Brak zadań</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+      <div class="modal-content">
+        <h3 class="modal-title">{{ isEditing ? 'Edit Task' : 'Add New Task' }}</h3>
+        
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input class="form-input" v-model="taskForm.title" placeholder="Wpisz tytuł zadania..." />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea 
+            class="form-input" 
+            v-model="taskForm.description" 
+            placeholder="Szczegóły zadania..."
+            rows="4"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-input" v-model="taskForm.status">
+            <option value="todo">To Do</option>
+            <option value="in-progress">In Progress</option>
+            <option value="in-review">In Review</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="closeModal">Anuluj</button>
+          <button class="btn-primary" @click="saveTask">Zapisz</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.page-wrapper {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #ffffff;
+  color: #150e24;
+  min-height: 100vh;
+  padding-bottom: 8rem;
+}
+
+.header-banner {
+  background-color: #f6f5ff;
+  padding: 3.5rem 0;
+  width: 100%;
+  margin-bottom: 3.5rem;
+}
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.header-title {
+  color: #151875;
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.5px;
+}
+
+.breadcrumbs {
+  color: #8a8fb9;
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.dot-separator {
+  margin: 0 0.6rem;
+  color: #dcdcdc;
+}
+
+.active-page {
+  color: #fb2e86;
+  font-weight: 600;
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.sidebar-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem 1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  border: 1px solid #eae8f5;
+}
+
+.menu-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0;
+  margin: 0;
+}
+
+.menu-list li {
+  font-size: 1.05rem;
+  color: #4a405c;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.menu-list li:hover:not(.divider) {
+  color: #2D3270;
+  background-color: #F8F9FA;
+  transform: translateX(4px);
+}
+
+.menu-list li.active {
+  color: #3f509e;
+  font-weight: 600;
+  background-color: #f6f5ff;
+}
+
+.icon {
+  margin-right: 14px;
+  font-size: 1.25rem;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.menu-icon-fix {
+  color: #8a8fb9;
+  width: 22px;
+  text-align: center;
+}
+
+.menu-list li.active .menu-icon-fix {
+  color: #3f509e;
+}
+
+.divider {
+  height: 1px;
+  background-color: #F0F2F5;
+  margin: 1rem 0;
+  padding: 0 !important;
+  cursor: default !important;
+}
+
+.logout-item { color: #EF4444 !important; }
+.logout-item:hover { background-color: #FEF2F2 !important; }
+
+.content-area {
+  background: transparent;
+}
+
+.modern-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 1.25rem 2rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(21, 24, 117, 0.05);
+  margin-bottom: 2rem;
+  border: 1px solid #f0f0f5;
+}
+
+.header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.section-title {
+  color: #1C2059;
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.badge {
+  background-color: #E6E8F4;
+  color: #414A8C;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.2rem 0.8rem;
+  border-radius: 20px;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* Nowe klasy dla przycisków w toolbarze zapobiegające zwężeniu */
+.toolbar-btn {
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.toolbar-btn.add {
+  background: #3f509e;
+  color: white;
+  border: none;
+}
+
+.toolbar-btn.add:hover {
+  transform: translateY(-3px);
+  background: #2e3b75;
+}
+
+.toolbar-btn.delete-bulk {
+  background: #FEF2F2;
+  color: #EF4444;
+  border: 1px solid #FEE2E2;
+}
+
+.toolbar-btn.delete-bulk:hover {
+  transform: translateY(-3px);
+  background: #FEE2E2;
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 400px));
+  justify-content: start;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.kanban-column {
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #F0F2F5;
+  padding: 1.25rem;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #F0F2F5;
+}
+
+.column-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1C2059;
+  margin: 0;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.task-list::-webkit-scrollbar {
+  width: 6px;
+}
+.task-list::-webkit-scrollbar-thumb {
+  background-color: #E5E7EB;
+  border-radius: 4px;
+}
+
+.task-card {
+  background: #ffffff;
+  padding: 1.25rem;
+  border-radius: 10px;
+  border: 1px solid #F0F2F5;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.task-card:hover {
+  border-color: #E6E8F4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.task-card.completed {
+  opacity: 0.6;
+  background-color: #FAFAFA;
+}
+
+.task-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 0.4rem;
+}
+
+.task-checkbox {
+  margin-top: 4px;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: #3f509e;
+}
+
+.task-title {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.task-desc {
+  margin: 0 0 1.25rem 0;
+  color: #6B7280;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.task-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.action-btn.edit {
+  background-color: #F4F6FB;
+  color: #414A8C;
+}
+
+.action-btn.edit:hover {
+  background-color: #E6E8F4;
+}
+
+.action-btn.delete {
+  background-color: #FEF2F2;
+  color: #EF4444;
+}
+
+.action-btn.delete:hover {
+  background-color: #FEE2E2;
+}
+
+.action-btn.move {
+  background-color: #F3F4F6;
+  color: #6B7280;
+}
+
+.action-btn.move:hover {
+  background-color: #E5E7EB;
+  color: #374151;
+}
+
+.empty-column {
+  text-align: center;
+  color: #9CA3AF;
+  font-size: 0.9rem;
+  padding: 2rem 0;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(17, 24, 39, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F0F2F5;
+}
+
+.modal-title {
+  color: #1C2059;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 1.5rem 0;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #4B5563;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background-color: #FAFAFA;
+  font-size: 0.95rem;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.2s, background-color 0.2s;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.form-input:focus {
+  border-color: #414A8C;
+  background-color: #ffffff;
+}
+
+textarea.form-input {
+  resize: vertical;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.btn-primary {
+  background-color: #414A8C;
+  color: #ffffff;
+  border: none;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #2D3270;
+}
+
+.btn-secondary {
+  background-color: #F3F4F6;
+  color: #4B5563;
+  border: none;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: #E5E7EB;
+}
+
+@media (max-width: 900px) {
+  .main-content { grid-template-columns: 1fr; }
+  .kanban-board { grid-template-columns: 1fr; }
+  .modern-toolbar { flex-direction: column; align-items: stretch; gap: 1rem; }
+  .toolbar-actions { flex-direction: column; }
+}
+</style>

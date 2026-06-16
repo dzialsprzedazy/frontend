@@ -99,7 +99,7 @@ onMounted(loadReviews)
         <div class="sidebar-card">
           <ul class="menu-list">
             <li @click="router.push('/admin')"><span class="icon">🏠</span><span class="menu-text">Dashboard</span></li>
-            <li><span class="icon">📦</span><span class="menu-text">Order Management</span></li>
+            <li @click="router.push('/admin/task-management')"><span class="icon">📋</span><span class="menu-text">Task Management</span></li>
             <li @click="router.push('/admin/product-management')"><span class="icon">🛍️</span><span class="menu-text">Product Management</span></li>
             <li @click="router.push('/admin/author-management')"><span class="icon">✍️</span><span class="menu-text">Author Management</span></li>
             <li @click="router.push('/admin/tag-management')"><span class="icon menu-icon-fix"><i class="fa-solid fa-hashtag"></i></span><span class="menu-text">Tag Management</span></li>

@@ -284,6 +284,10 @@ onMounted(loadProducts)
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
             </li>
+            <li @click="router.push('/admin/task-management')">
+              <span class="icon">📋</span>
+              <span class="menu-text">Task Management</span>
+            </li>
             <li
               class="active"
               @click="router.push('/admin/product-management')"
