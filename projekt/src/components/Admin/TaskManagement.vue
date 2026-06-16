@@ -12,6 +12,7 @@ const showModal = ref(false)
 const isEditing = ref(false)
 const currentTaskId = ref(null)
 const selectedTasks = ref([])
+const isLoading = ref(false) // Dodana zmienna do loadera
 
 const taskForm = ref({
   title: "",
@@ -20,11 +21,14 @@ const taskForm = ref({
 })
 
 const loadTasks = async () => {
+  isLoading.value = true // Start loadera
   try {
     const response = await api.get("AdminTasks")
     tasks.value = response.data
   } catch (error) {
     showAlert({ type: "error", message: "Nie udało się pobrać zadań." })
+  } finally {
+    isLoading.value = false // Koniec loadera
   }
 }
 
@@ -202,7 +206,12 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="kanban-board">
+        <div v-if="isLoading" class="dashboard-card loading-state">
+          <div class="loader-circle"></div>
+          <span>Fetching tasks...</span>
+        </div>
+
+        <div v-else class="animated-content kanban-board">
           <div class="kanban-column">
             <div class="column-header">
               <h3 class="column-title">To Do</h3>
@@ -354,6 +363,60 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.animated-content {
+  animation: fadeSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  border: 1px solid #eae8f5;
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  font-size: 1.2rem;
+  color: #3f509e;
+  font-weight: 600;
+  gap: 12px;
+}
+
+.loader-circle {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3f509e;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 .page-wrapper {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: #ffffff;
@@ -521,7 +584,6 @@ onMounted(async () => {
   align-items: center;
 }
 
-/* Nowe klasy dla przycisków w toolbarze zapobiegające zwężeniu */
 .toolbar-btn {
   padding: 12px 20px;
   border-radius: 12px;
