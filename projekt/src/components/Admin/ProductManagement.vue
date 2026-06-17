@@ -6,8 +6,14 @@ import { useAlerts } from "@/components/alerts/useAlerts.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
 import ProductAddModal from "./ProductAddModal.vue"
+import ProductEditModal from "./ProductEditModal.vue"
 
 import api from "@/services/axios.js"
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "TWÓJ_URL_SUPABASE"
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "TWÓJ_KLUCZ_SUPABASE"
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 const router = useRouter()
 const { showAlert } = useAlerts()
@@ -22,13 +28,16 @@ const selectedCategory = ref("All")
 const showImportModal = ref(false)
 const showAddModal = ref(false)
 
+const showEditModal = ref(false)
+const productToEditId = ref(null)
+
 const showDeleteModal = ref(false)
 const productToDelete = ref(null)
 
 const csvFile = ref(null)
 const isDragging = ref(false)
 const fileInput = ref(null)
-const isUploading = ref(false) // New state for import button
+const isUploading = ref(false)
 
 const loadProducts = async () => {
   isLoading.value = true
@@ -69,10 +78,25 @@ const executeDelete = async () => {
   if (!productToDelete.value) return
 
   try {
-    await api.delete(`products/${productToDelete.value}`)
+    const id = productToDelete.value
+    
+    await api.delete(`products/${id}`)
+
+    const folderPath = `Produkt${id}`
+    const { data: files } = await supabase.storage
+      .from("Produkty")
+      .list(folderPath)
+
+    if (files && files.length > 0) {
+      const filesToRemove = files.map((file) => `${folderPath}/${file.name}`)
+      await supabase.storage
+        .from("Produkty")
+        .remove(filesToRemove)
+    }
+
     showAlert({
       type: "success",
-      message: "Product deleted successfully.",
+      message: "Product and its images deleted successfully.",
       position: "top-right",
     })
     await loadProducts()
@@ -288,6 +312,10 @@ onMounted(loadProducts)
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
             </li>
+            <li @click="router.push('/admin/task-management')">
+              <span class="icon">📋</span>
+              <span class="menu-text">Task Management</span>
+            </li>
             <li
               class="active"
               @click="router.push('/admin/product-management')"
@@ -403,7 +431,12 @@ onMounted(loadProducts)
                     <i :class="getIcon(product)"></i>
                   </div>
                   <div class="name-details">
-                    <span class="p-name">{{ product.nazwaProduktu }}</span>
+                    <span class="p-name">
+                      {{ product.nazwaProduktu }}
+                      <span v-if="product.czyUkryty" class="badge-hidden">
+                        <i class="fa-solid fa-eye-slash"></i> Ukryty
+                      </span>
+                    </span>
                     <span class="p-author"
                       >by {{ product.autorImie }}
                       {{ product.autorNazwisko }}</span
@@ -462,6 +495,14 @@ onMounted(loadProducts)
       :show="showAddModal"
       @close="showAddModal = false"
       @product-added="loadProducts"
+    />
+
+    <ProductEditModal
+      v-if="showEditModal"
+      :show="showEditModal"
+      :productId="productToEditId"
+      @close="showEditModal = false"
+      @product-updated="loadProducts"
     />
 
     <Transition name="modal">
@@ -902,7 +943,7 @@ onMounted(loadProducts)
 .p-name {
   font-weight: 700;
   color: #151875;
-  font-size: 1.05rem;
+  font-size: 1.05rem; display: flex; align-items: center; flex-wrap: wrap;
 }
 .p-author {
   font-size: 0.85rem;
@@ -916,6 +957,19 @@ onMounted(loadProducts)
   font-weight: 600;
   color: #555;
   text-transform: uppercase;
+}
+
+.badge-hidden {
+  font-size: 0.7rem;
+  background-color: #fdf2f4;
+  color: #e03a5b;
+  padding: 3px 6px;
+  border-radius: 6px;
+  margin-left: 8px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .product-stock-edit {

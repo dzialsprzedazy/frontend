@@ -40,8 +40,6 @@ const loadUsers = async () => {
       fetchedUsers.map(async (user) => {
         try {
           const ordersResponse = await api.get(`OrderHistory/user/${user.id}`)
-
-          // Dodajemy wybrane ID statusu do każdego zamówienia, aby <select> miał domyślną wartość
           const ordersWithStatusSelection = (ordersResponse.data || []).map(
             (order) => {
               const matchedStatus = availableStatuses.value.find(
@@ -213,6 +211,10 @@ onMounted(loadUsers)
             <li @click="router.push('/admin')">
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
+            </li>
+            <li @click="router.push('/admin/task-management')">
+              <span class="icon">📋</span>
+              <span class="menu-text">Task Management</span>
             </li>
             <li @click="router.push('/admin/product-management')">
               <span class="icon">🛍️</span>
@@ -515,7 +517,7 @@ onMounted(loadUsers)
 <style scoped>
 .page-wrapper {
   font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f8f9fc;
+  background-color: #ffffff;
   color: #150e24;
   min-height: 100vh;
   padding-bottom: 8rem;

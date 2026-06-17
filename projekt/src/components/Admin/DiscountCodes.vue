@@ -181,6 +181,10 @@ onMounted(loadUsers)
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
             </li>
+            <li @click="router.push('/admin/task-management')">
+              <span class="icon">📋</span>
+              <span class="menu-text">Task Management</span>
+            </li>
             <li @click="router.push('/admin/product-management')">
               <span class="icon">🛍️</span>
               <span class="menu-text">Product Management</span>
@@ -194,6 +198,10 @@ onMounted(loadUsers)
                 ><i class="fa-solid fa-hashtag"></i
               ></span>
               <span class="menu-text">Tag Management</span>
+            </li>
+            <li @click="router.push('/admin/order-management')">
+              <span class="icon">📦</span>
+              <span class="menu-text">Order Management</span>
             </li>
             <li @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>

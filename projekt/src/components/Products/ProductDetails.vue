@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, computed } from "vue"
-import { useRoute } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
 import api from "@/services/axios.js"
 import { handleErrors } from "../../../errors/ErrorHandler.js"
 import ErrorCard from "../../../errors/ErrorCard.vue"
@@ -9,6 +9,7 @@ import { addToCart } from "@/components/Cart/cartLogic.js"
 
 const currentTab = ref("Description")
 const route = useRoute()
+const router = useRouter()
 const { showAlert } = useAlerts()
 
 const product = ref(null)
@@ -16,6 +17,18 @@ const isLoading = ref(false)
 const fetchError = ref(null)
 const isInWishlist = ref(false)
 const isWishlistActionLoading = ref(false)
+
+const isAdmin = computed(() => {
+  try {
+    const userStr = localStorage.getItem("user")
+    if (!userStr) return false
+    const user = JSON.parse(userStr)
+    const roles = user.roles || user.Roles || []
+    return roles.includes("Admin")
+  } catch (e) {
+    return false
+  }
+})
 
 const stockClass = computed(() => {
   if (!product.value) return ""
@@ -38,7 +51,18 @@ const loadProduct = async (idFromRoute = null) => {
     if (!id) return
 
     const response = await api.get(`products/${id}`)
+    
+    // ZABEZPIECZENIE: Jeśli produkt jest ukryty, a użytkownik nie jest adminem - wyrzuć błąd
+    if (response.data.czyUkryty && !isAdmin.value) {
+      throw new Error("Product not found")
+    }
+
     product.value = response.data
+
+    // Filtrowanie powiązanych produktów dla zwykłego użytkownika
+    if (product.value.relatedProducts && !isAdmin.value) {
+       product.value.relatedProducts = product.value.relatedProducts.filter(p => !p.czyUkryty)
+    }
 
     const token = localStorage.getItem("token")
     if (token) {
@@ -53,7 +77,12 @@ const loadProduct = async (idFromRoute = null) => {
       }
     }
   } catch (error) {
-    handleErrors(error, fetchError)
+    // Złapane zabezpieczenie pokaże, że produktu nie ma (404)
+    if (error.message === "Product not found") {
+      fetchError.value = { message: "The product you are looking for does not exist or has been removed." }
+    } else {
+      handleErrors(error, fetchError)
+    }
   } finally {
     isLoading.value = false
   }
@@ -121,7 +150,6 @@ const handleAdd = async () => {
 onMounted(() => {
   loadProduct()
 })
-
 
 const isUserLoggedIn = computed(() => !!localStorage.getItem("token"))
 const reviewForm = ref({ rating: 5, comment: "" })
@@ -191,7 +219,12 @@ const submitReview = async () => {
 
             <div class="product-info-section">
               <div class="title-and-stock">
-                <h1 class="product-title">{{ product.nazwaProduktu }}</h1>
+                <h1 class="product-title">
+                  {{ product.nazwaProduktu }}
+                  <span v-if="product.czyUkryty && isAdmin" class="badge-hidden">
+                    <i class="fa-solid fa-eye-slash"></i> Ukryty
+                  </span>
+                </h1>
                 <div class="availability-badge" :class="stockClass">
                   <i class="fa-solid fa-layer-group"></i>
                   Dostępność: {{ product.stanMagazynowy }}
@@ -224,7 +257,7 @@ const submitReview = async () => {
               </p>
 
               <div class="product-actions">
-                <button class="cart-btn" v-on:click="handleAdd" :disabled="product.stanMagazynowy === 0">
+                <button class="cart-btn" v-on:click="handleAdd" :disabled="product.stanMagazynowy === 0 || product.czyUkryty">
                   <i class="fa-solid fa-cart-shopping"></i> Add To Cart
                 </button>
                 <button
@@ -410,7 +443,12 @@ const submitReview = async () => {
                       :to="`/products/${rel.idProduktu}`"
                       class="product-title-link"
                     >
-                      <h3>{{ rel.nazwaProduktu }}</h3>
+                      <h3>
+                        {{ rel.nazwaProduktu }}
+                        <span v-if="rel.czyUkryty && isAdmin" class="badge-hidden">
+                          <i class="fa-solid fa-eye-slash"></i>
+                        </span>
+                      </h3>
                     </router-link>
                     <div class="related-stars">
                       <span
@@ -577,6 +615,23 @@ const submitReview = async () => {
   letter-spacing: -0.5px;
   line-height: 1.2;
   word-wrap: break-word;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.badge-hidden {
+  font-size: 0.9rem;
+  background-color: #fdf2f4;
+  color: #e03a5b;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0;
 }
 
 .availability-badge {
