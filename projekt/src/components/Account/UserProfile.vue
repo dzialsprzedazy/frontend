@@ -38,8 +38,11 @@ const openOrderDetails = async (orderId) => {
     expandedOrderId.value = orderId
 
     showOrderDetails.value = true
+    console.log(selectedOrder.value)
+    isReportIssuePossible.value = selectedOrder.value.idStatusu != 5
   } catch (error) {
     showAlert({ type: "error", message: "Could not load order details." })
+    console.log(error)
   } finally {
     isLoading.value = false
   }
@@ -57,9 +60,21 @@ const newAddress = ref({
   numerLokalu: "",
   kodPocztowy: "",
 })
-
+const issueForm = ref({
+  idZamowienia: null,
+  idPozycji: null,
+  email: "",
+  idTypuZgloszenia: 1,
+  powod: "",
+  productName: "",
+})
 const orders = ref([])
 const isLoadingOrders = ref(false)
+const showIssueModal = ref(false)
+const isSubmittingIssue = ref(false)
+const isReportIssuePossible = ref(true)
+
+const returnStatus = ref(null)
 
 const getOrderStatusInfo = (statusId) => {
   const statuses = {
@@ -70,6 +85,18 @@ const getOrderStatusInfo = (statusId) => {
     5: { text: "Cancelled", class: "status-danger" },
   }
   return statuses[statusId] || { text: "Nieznany", class: "" }
+}
+
+// const issueTypes = ref([
+//   { id: 1, name: "Zwrot konsumencki" },
+//   { id: 2, name: "Reklamacja (Rękojmia)" },
+//   { id: 3, name: "Uszkodzenie w transporcie" },
+//   { id: 4, name: "Inny problem z produktem" },
+// ])
+const issueTypes = ref(null)
+const getReturnStatusForProduct = (productId) => {
+  if (!returnStatus.value) return null
+  return returnStatus.value.find((r) => r.idPozycji === productId)
 }
 
 const formatOrderDate = (dateString) => {
@@ -94,9 +121,12 @@ const loadOrders = async () => {
   try {
     isLoadingOrders.value = true
     const response = await api.get("users/orders")
+    const issueTypesResponse = await api.get("returns/types")
+    issueTypes.value = issueTypesResponse.data
     orders.value = response.data
   } catch (error) {
     showAlert({ type: "error", message: "Failed to load orders." })
+    console.error(error)
   } finally {
     isLoadingOrders.value = false
   }
@@ -182,7 +212,77 @@ const deleteAddress = async (id) => {
     showAlert({ type: "error", message: "Could not delete address." })
   }
 }
+const getStatusClass = (statusId) => {
+  switch (statusId) {
+    case 1:
+      return "status-warning"
+    case 2:
+      return "status-success"
+    case 3:
+      return "status-danger"
+    default:
+      return "status-warning"
+  }
+}
+const openIssueModal = (order, product) => {
+  issueForm.value = {
+    idZamowienia: order.idZamowienia,
+    idPozycji: product.idPozycji || product.idProduktu,
+    email: userEmail.value || order.email || "",
+    idTypuZgloszenia: 1,
+    powod: "",
+    productName: product.nazwaWMomencieZakupu || product.nazwaProduktu,
+  }
+  showIssueModal.value = true
+}
 
+const closeIssueModal = () => {
+  showIssueModal.value = false
+}
+
+const submitIssue = async () => {
+  if (!issueForm.value.powod || !issueForm.value.powod.trim()) {
+    showAlert({
+      type: "error",
+      message: "Please provide a reason for your request.",
+      position: "top-right",
+    })
+    return
+  }
+
+  try {
+    isSubmittingIssue.value = true
+    await api.post("Returns", {
+      idZamowienia: issueForm.value.idZamowienia,
+      idPozycji: issueForm.value.idPozycji,
+      email: issueForm.value.email,
+      idTypu: issueForm.value.idTypuZgloszenia,
+      powod: issueForm.value.powod,
+    })
+
+    showAlert({
+      type: "success",
+      message: "Your issue has been reported successfully.",
+      position: "top-right",
+      duration: 800,
+    })
+
+    openOrderDetails(selectedOrder.value.idZamowienia)
+    openOrderDetails(selectedOrder.value.idZamowienia)
+    closeIssueModal()
+  } catch (error) {
+    showAlert({
+      type: "error",
+      message:
+        error.response?.data?.message ||
+        "An error occurred while reporting the issue. Please try again.",
+      position: "top-right",
+      duration: 800,
+    })
+  } finally {
+    isSubmittingIssue.value = false
+  }
+}
 const setActiveTab = (tab) => {
   activeTab.value = tab
   if (tab === "addresses") loadAddresses()
@@ -610,7 +710,7 @@ onMounted(loadUserDetails)
                           minmax(150px, 1fr)
                         );
                         gap: 1.5rem;
-                        margin-bottom: 0;
+                        margin-bottom: 1.5rem;
                       "
                     >
                       <div class="detail-group">
@@ -639,6 +739,73 @@ onMounted(loadUserDetails)
                           {{ selectedOrder.adresZamowienia.kodPocztowy }}
                           {{ selectedOrder.adresZamowienia.miasto }}
                         </span>
+                      </div>
+                    </div>
+
+                    <div class="order-items-section">
+                      <span
+                        class="detail-label"
+                        style="
+                          display: block;
+                          margin-bottom: 1rem;
+                          border-bottom: 1px solid #eae8f5;
+                          padding-bottom: 0.5rem;
+                        "
+                        >Ordered Items</span
+                      >
+                      <div class="order-items-list">
+                        <div
+                          v-for="prod in selectedOrder.pozycje"
+                          :key="prod.idPozycji"
+                          class="order-item-row"
+                        >
+                          <div class="item-info">
+                            <span class="item-name">{{
+                              prod.nazwaProduktu
+                            }}</span>
+                            <!-- <span class="item-id"
+                              >Product ID: {{ prod.idProduktu }}</span
+                            > -->
+                          </div>
+                          <div class="item-calculation">
+                            <span class="item-qty">{{ prod.ilosc }}x</span>
+                            <span class="item-price"
+                              >{{
+                                (prod.cenaZakupu || prod.cena || 0).toFixed(2)
+                              }}
+                              PLN</span
+                            >
+                          </div>
+                          <div class="item-actions">
+                            <button
+                              v-if="
+                                isReportIssuePossible &&
+                                prod.idStatusuZwrotu == null
+                              "
+                              class="btn-outline report-error-btn"
+                              @click="openIssueModal(order, prod)"
+                            >
+                              ⚠️ Report Issue
+                            </button>
+                            <div
+                              v-else-if="
+                                // getReturnStatusForProduct(prod.idPozycji)
+                                prod.idStatusuZwrotu
+                              "
+                              class="status-badge-container"
+                            >
+                              <p class="detail-label">Claim Status:</p>
+                              <span
+                                :class="[
+                                  'status-badge',
+                                  getStatusClass(prod.idStatusuZwrotu),
+                                ]"
+                              >
+                                {{ prod.statusZwrotu || "Pending Review" }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -812,6 +979,145 @@ onMounted(loadUserDetails)
           </div>
         </div>
       </main>
+      <Transition name="fade">
+        <div
+          v-if="showIssueModal"
+          class="modal-overlay"
+          @click.self="closeIssueModal"
+        >
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Report an Issue</h3>
+              <button class="close-btn" @click="closeIssueModal">
+                &times;
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="detail-group" style="margin-bottom: 1.25rem">
+                <span class="detail-label">Selected Product</span>
+                <div
+                  style="
+                    background-color: #f6f5ff;
+                    padding: 0.8rem;
+                    border-radius: 8px;
+                    border: 1px solid #cfd4ed;
+                    color: #151875;
+                    font-weight: 600;
+                  "
+                >
+                  <i
+                    class="fa-solid fa-cube"
+                    style="color: #3f509e; margin-right: 8px"
+                  ></i>
+                  {{ issueForm.productName }}
+                </div>
+              </div>
+
+              <div class="detail-group" style="margin-bottom: 1.25rem">
+                <span class="detail-label">Email Address (from order)</span>
+                <input
+                  type="email"
+                  class="detail-input"
+                  v-model="issueForm.email"
+                  disabled
+                  style="background-color: #f0f2f8; cursor: not-allowed"
+                />
+              </div>
+
+              <div class="detail-group" style="margin-bottom: 1.25rem">
+                <span class="detail-label">Issue Type</span>
+                <select
+                  class="detail-input"
+                  v-model="issueForm.idTypuZgloszenia"
+                  style="
+                    padding: 0.6rem;
+                    border-radius: 8px;
+                    border: 1px solid #dcdcdc;
+                    font-weight: 600;
+                    color: #151875;
+                  "
+                >
+                  <option
+                    v-for="type in issueTypes"
+                    :key="type.id"
+                    :value="type.id"
+                  >
+                    {{ type.name }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="detail-group">
+                <span class="detail-label">Reason / Justification</span>
+                <textarea
+                  class="detail-input"
+                  rows="4"
+                  v-model="issueForm.powod"
+                  placeholder="Please describe the problem with this product..."
+                  style="
+                    padding: 0.6rem;
+                    border-radius: 8px;
+                    border: 1px solid #dcdcdc;
+                    resize: vertical;
+                  "
+                  :style="
+                    !issueForm.powod.trim() ? 'border-color: #ffcccc;' : ''
+                  "
+                ></textarea>
+              </div>
+
+              <div
+                style="
+                  margin-top: 1.25rem;
+                  font-size: 0.85rem;
+                  color: #8a8fb9;
+                  display: flex;
+                  gap: 8px;
+                  align-items: flex-start;
+                  background: #fdfdfd;
+                  padding: 12px;
+                  border-radius: 8px;
+                  border: 1px dashed #dcdcdc;
+                "
+              >
+                <i
+                  class="fa-solid fa-circle-info"
+                  style="color: #3f509e; margin-top: 2px"
+                ></i>
+                <p style="margin: 0; line-height: 1.4">
+                  <strong>Please note:</strong> Any further communication
+                  regarding this issue will be conducted via the email address
+                  provided above.
+                </p>
+              </div>
+            </div>
+            <div
+              class="modal-footer"
+              style="
+                margin-top: 1.5rem;
+                display: flex;
+                justify-content: flex-end;
+                gap: 1rem;
+              "
+            >
+              <button
+                class="btn-outline"
+                @click="closeIssueModal"
+                :disabled="isSubmittingIssue"
+              >
+                Cancel
+              </button>
+              <button
+                class="btn-primary"
+                @click="submitIssue"
+                :disabled="isSubmittingIssue"
+              >
+                {{ isSubmittingIssue ? "Submitting..." : "Submit Issue" }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </div>
   </div>
 </template>
@@ -1015,6 +1321,133 @@ onMounted(loadUserDetails)
   font-weight: 700;
   margin: 0 0 1.5rem 0;
 }
+.order-items-section {
+  margin-top: 1rem;
+}
+
+.order-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.order-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px dashed #eae8f5;
+}
+
+.order-item-row:last-child {
+  border-bottom: none;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  flex: 2;
+}
+
+.item-name {
+  font-weight: 600;
+  color: #151875;
+  font-size: 0.95rem;
+}
+
+.item-id {
+  font-size: 0.75rem;
+  color: #8a8fb9;
+}
+
+.item-calculation {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.item-qty {
+  background-color: #f0f2f8;
+  color: #3f509e;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.item-price {
+  font-size: 0.9rem;
+  color: #151875;
+  font-weight: 600;
+}
+
+.item-actions {
+  flex: 1;
+  text-align: right;
+}
+
+.report-error-btn {
+  padding: 0.4rem 0.8rem !important;
+  font-size: 0.85rem !important;
+  color: #e03a5b !important;
+  border-color: #fdf2f4 !important;
+}
+
+.report-error-btn:hover {
+  background-color: #fdf2f4 !important;
+  border-color: #e03a5b !important;
+}
+
+/* --- STYLE OKNA MODALNEGO --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(21, 14, 36, 0.5);
+  backdrop-filter: blur(3px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+}
+
+.modal-content {
+  background: #ffffff;
+  width: 90%;
+  max-width: 500px;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  animation: modalFadeIn 0.25s ease-out;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #151875;
+  font-size: 1.3rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.7rem;
+  color: #8a8fb9;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  color: #fb2e86;
+}
 
 .details-grid {
   display: grid;
@@ -1158,6 +1591,25 @@ onMounted(loadUserDetails)
   color: white !important;
   border-color: #3f509e !important;
 }
+@keyframes modalFadeIn {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 
 @media (max-width: 850px) {
   .main-content {
@@ -1177,7 +1629,15 @@ onMounted(loadUserDetails)
   .profile-avatar {
     margin-right: 0;
   }
-
+  .order-item-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .item-actions {
+    text-align: left;
+    width: 100%;
+  }
   .details-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
