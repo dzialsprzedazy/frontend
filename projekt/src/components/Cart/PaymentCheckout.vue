@@ -51,6 +51,7 @@ const isPaymentValid = () => {
     )
   return true
 }
+
 const paymentMethods = [
   { id: 1, name: "BLIK", icon: "fa-solid fa-mobile-screen" },
   { id: 2, name: "Karta płatnicza", icon: "fa-regular fa-credit-card" },
@@ -66,9 +67,11 @@ const totalOrderSum = computed(() => {
   appliedDiscount.value = dis
   return Math.max(0, sum - dis).toFixed(2)
 })
+
 const selectPayment = (method) => {
   selectedPayment.value = method
 }
+
 const loadAddresses = async () => {
   if (!isLoggedIn.value) return
 
@@ -79,6 +82,7 @@ const loadAddresses = async () => {
     console.error("Failed to fetch user addresses:", error)
   }
 }
+
 const applyDiscount = async () => {
   if (!discountCode.value.trim()) return
 
@@ -102,6 +106,7 @@ const applyDiscount = async () => {
     isApplyingDiscount.value = false
   }
 }
+
 const findAddressId = () => {
   const found = addresses.value.find((addr) => {
     return (
@@ -118,12 +123,15 @@ const findAddressId = () => {
 const handleFinalizeOrder = async () => {
   placedOrderFlag.value = true
   let paymentAmount = totalOrderSum.value
+
   if (!selectedPayment.value || !isPaymentValid()) {
-    console.log(" niepoprawne dane")
+    console.log("niepoprawne dane")
     return
   }
+
   const matchedId = findAddressId()
   isSubmitting.value = true
+
   try {
     const orderPayload = {
       idMetodyDostawy: selectedDelivery.value.id,
@@ -148,11 +156,13 @@ const handleFinalizeOrder = async () => {
       imie: addressForm.value.firstName,
       nazwisko: addressForm.value.lastName,
       numerTelefonu: addressForm.value.phone,
+      idKodu: discount.value ? discount.value.idKodu : null
     }
 
     console.log("Wysyłanie zamówienia:", orderPayload)
     if (isLoggedIn.value) await api.post("users/orders", orderPayload)
     else await api.post("users/orders/guest", orderPayload)
+    
     clearCart()
     emit("order-placed")
     emit("close")
@@ -162,6 +172,7 @@ const handleFinalizeOrder = async () => {
     isSubmitting.value = false
   }
 }
+
 onMounted(async () => {
   await loadAddresses()
 })
@@ -245,11 +256,8 @@ onMounted(async () => {
                 Please select a payment method to continue.
               </span>
             </div>
+
             <div class="checkout-section mb-4">
-              <h3 class="section-subtitle">Payment Method</h3>
-
-              <div class="payment-layout"></div>
-
               <div v-if="selectedPayment" class="payment-details-box mt-3">
                 <div v-if="selectedPayment.id === 1" class="form-group">
                   <label>Enter BLIK code</label>
@@ -492,6 +500,7 @@ onMounted(async () => {
   flex-direction: row;
   gap: 12px;
 }
+
 .input-field {
   width: 100%;
   padding: 10px;
@@ -523,6 +532,7 @@ onMounted(async () => {
 .card-form input {
   margin-bottom: 8px;
 }
+
 .payment-card-option {
   flex: 1;
   height: 90px;
@@ -590,7 +600,7 @@ onMounted(async () => {
   color: #e03a5b;
   font-weight: 500;
 }
-/* --- Style kodu rabatowego --- */
+
 .discount-input-group {
   display: flex;
   gap: 10px;
@@ -605,7 +615,6 @@ onMounted(async () => {
     background-color 0.3s ease;
 }
 
-/* Stan błędu przypominający odrzucenie wyboru w DeliverySelection */
 .discount-input-group.error-state .input-field {
   border-color: #e03a5b;
   background-color: #fff5f7;
@@ -642,6 +651,7 @@ onMounted(async () => {
 .discount-price {
   color: #10b981;
 }
+
 .order-summary-box {
   background-color: #f8f8fd;
   border: 1px dashed #c2c6e2;
@@ -714,6 +724,7 @@ button:disabled {
 .modal-leave-to {
   opacity: 0;
 }
+
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
   transform: scale(0.95);

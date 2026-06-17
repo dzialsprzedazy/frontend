@@ -9,8 +9,14 @@ import {
   isLoggedIn,
 } from "@/components/Cart/cartLogic"
 import DeliverySelection from "./DeliverySelection.vue"
+
+// Zaktualizowane propsy – przyjmują teraz kwotę rabatu na produkty
 const props = defineProps({
   show: Boolean,
+  discountAmount: {
+    type: Number,
+    default: 0
+  }
 })
 const emit = defineEmits(["close", "continue-to-payment"])
 
@@ -28,9 +34,7 @@ const isPostalCodeValid = computed(() => {
   return /^\d{2}-\d{3}$/.test(addressForm.value.postalCode)
 })
 const isFormInvalid = () => {
-  // Funkcja pomocnicza, która skraca kod i dba o sprawdzanie spacji/pustych stringów
   const isEmpty = (value) => value == null || value.trim() === ""
-
   let isAddressValid = true
 
   if (!isLocalDelivery) {
@@ -50,10 +54,13 @@ const isFormInvalid = () => {
   )
 }
 
+// POPRAWKA: Od bazowej sumy odejmujemy przekazany rabat i dodajemy wysyłkę
 const totalOrderSum = computed(() => {
-  return (cartSum.value + shippingCost.value).toFixed(2)
+  const pureTotal = cartSum.value - props.discountAmount + shippingCost.value
+  return pureTotal.toFixed(2)
 })
 
+/* Reszta funkcji (loadUserProfile, verifyAndSetAddress, handleProceedToPayment, onMounted) pozostaje bez zmian */
 const loadUserProfile = async () => {
   if (!isLoggedIn.value) return
   isLoading.value = true

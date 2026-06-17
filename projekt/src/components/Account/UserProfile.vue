@@ -11,6 +11,7 @@ const userName = ref("")
 const userSurname = ref("")
 const userEmail = ref("")
 const phoneNumber = ref("")
+const isAdmin = ref(false)
 
 const originalData = ref({})
 
@@ -74,7 +75,9 @@ const showIssueModal = ref(false)
 const isSubmittingIssue = ref(false)
 const isReportIssuePossible = ref(true)
 
-const returnStatus = ref(null)
+const discountCodes = ref([])
+const isLoadingCodes = ref(false)
+const issueTypes = ref(null)
 
 const getOrderStatusInfo = (statusId) => {
   const statuses = {
@@ -85,18 +88,6 @@ const getOrderStatusInfo = (statusId) => {
     5: { text: "Cancelled", class: "status-danger" },
   }
   return statuses[statusId] || { text: "Nieznany", class: "" }
-}
-
-// const issueTypes = ref([
-//   { id: 1, name: "Zwrot konsumencki" },
-//   { id: 2, name: "Reklamacja (Rękojmia)" },
-//   { id: 3, name: "Uszkodzenie w transporcie" },
-//   { id: 4, name: "Inny problem z produktem" },
-// ])
-const issueTypes = ref(null)
-const getReturnStatusForProduct = (productId) => {
-  if (!returnStatus.value) return null
-  return returnStatus.value.find((r) => r.idPozycji === productId)
 }
 
 const formatOrderDate = (dateString) => {
@@ -129,6 +120,18 @@ const loadOrders = async () => {
     console.error(error)
   } finally {
     isLoadingOrders.value = false
+  }
+}
+
+const loadDiscountCodes = async () => {
+  try {
+    isLoadingCodes.value = true
+    const response = await api.get("DiscountCodes/my-codes")
+    discountCodes.value = response.data
+  } catch (error) {
+    showAlert({ type: "error", message: "Failed to load discount codes." })
+  } finally {
+    isLoadingCodes.value = false
   }
 }
 
@@ -225,6 +228,7 @@ const getStatusClass = (statusId) => {
   }
 }
 const openIssueModal = (order, product) => {
+  console.log(product)
   issueForm.value = {
     idZamowienia: order.idZamowienia,
     idPozycji: product.idPozycji || product.idProduktu,
@@ -287,6 +291,7 @@ const setActiveTab = (tab) => {
   activeTab.value = tab
   if (tab === "addresses") loadAddresses()
   if (tab === "orders") loadOrders()
+  if (tab === "discount-codes") loadDiscountCodes()
 }
 
 const loadUserDetails = async () => {
@@ -298,6 +303,8 @@ const loadUserDetails = async () => {
     userSurname.value = data.nazwisko || ""
     userEmail.value = data.email || ""
     phoneNumber.value = data.telefon || ""
+
+    isAdmin.value = data.roles && data.roles.includes("Admin")
   } catch (error) {
     if (error.response?.status === 401) {
       router.push("/login")
@@ -412,6 +419,25 @@ const changePassword = async () => {
   }
 }
 
+const copyToClipboard = (code) => {
+  navigator.clipboard
+    .writeText(code)
+    .then(() => {
+      showAlert({
+        type: "success",
+        message: "Code copied to clipboard!",
+        position: "top-right",
+      })
+    })
+    .catch(() => {
+      showAlert({
+        type: "error",
+        message: "Failed to copy code.",
+        position: "top-right",
+      })
+    })
+}
+
 onMounted(loadUserDetails)
 </script>
 
@@ -427,7 +453,9 @@ onMounted(loadUserDetails)
               ? "Dashboard"
               : activeTab === "orders"
                 ? "Order History"
-                : "Saved Addresses"
+                : activeTab === "discount-codes"
+                  ? "Discount Codes"
+                  : "Saved Addresses"
           }}</span>
         </p>
       </div>
@@ -458,6 +486,13 @@ onMounted(loadUserDetails)
               <span class="icon">📍</span>
               <span class="menu-text">Saved Addresses</span>
             </li>
+            <li
+              :class="{ active: activeTab === 'discount-codes' }"
+              @click="setActiveTab('discount-codes')"
+            >
+              <span class="icon">🏷️</span>
+              <span class="menu-text">My Discount Codes</span>
+            </li>
             <li class="divider"></li>
             <li @click="handleLogout" class="logout-item">
               <span class="icon">🚪</span>
@@ -479,9 +514,11 @@ onMounted(loadUserDetails)
               <p>{{ userEmail }}</p>
             </div>
 
-            <button v-if="!isEditing" class="btn-primary" @click="startEditing">
-              Edit Profile
-            </button>
+            <div v-if="!isEditing" class="action-buttons">
+              <button class="btn-primary" @click="startEditing">
+                Edit Profile
+              </button>
+            </div>
 
             <div v-else class="action-buttons">
               <button
@@ -743,54 +780,41 @@ onMounted(loadUserDetails)
                     </div>
 
                     <div class="order-items-section">
-                      <span
-                        class="detail-label"
-                        style="
-                          display: block;
-                          margin-bottom: 1rem;
-                          border-bottom: 1px solid #eae8f5;
-                          padding-bottom: 0.5rem;
-                        "
-                        >Ordered Items</span
-                      >
-                      <div class="order-items-list">
+                      <h4 class="items-title">Ordered Products</h4>
+                      <div class="items-grid">
                         <div
-                          v-for="prod in selectedOrder.pozycje"
-                          :key="prod.idPozycji"
-                          class="order-item-row"
+                          v-for="item in selectedOrder.pozycje ||
+                          selectedOrder.Pozycje ||
+                          []"
+                          :key="item.idProduktu || item.IdProduktu"
+                          class="item-tile"
                         >
-                          <div class="item-info">
-                            <span class="item-name">{{
-                              prod.nazwaProduktu
-                            }}</span>
-                            <!-- <span class="item-id"
-                              >Product ID: {{ prod.idProduktu }}</span
-                            > -->
+                          <div class="item-name">
+                            {{ item.nazwaProduktu || item.NazwaProduktu }}
                           </div>
-                          <div class="item-calculation">
-                            <span class="item-qty">{{ prod.ilosc }}x</span>
+                          <div class="item-meta">
+                            <span class="item-qty"
+                              >{{ item.ilosc || item.Ilosc }} szt.</span
+                            >
                             <span class="item-price"
                               >{{
-                                (prod.cenaZakupu || prod.cena || 0).toFixed(2)
+                                (item.cena || item.Cena).toFixed(2)
                               }}
                               PLN</span
                             >
-                          </div>
-                          <div class="item-actions">
                             <button
                               v-if="
                                 isReportIssuePossible &&
-                                prod.idStatusuZwrotu == null
+                                item.idStatusuZwrotu == null
                               "
                               class="btn-outline report-error-btn"
-                              @click="openIssueModal(order, prod)"
+                              @click="openIssueModal(order, item)"
                             >
-                              ⚠️ Report Issue
+                              ⚠️
                             </button>
-                            <div
+                            <!-- <div
                               v-else-if="
-                                // getReturnStatusForProduct(prod.idPozycji)
-                                prod.idStatusuZwrotu
+                                item.idStatusuZwrotu
                               "
                               class="status-badge-container"
                             >
@@ -798,13 +822,25 @@ onMounted(loadUserDetails)
                               <span
                                 :class="[
                                   'status-badge',
-                                  getStatusClass(prod.idStatusuZwrotu),
+                                  getStatusClass(item.idStatusuZwrotu),
                                 ]"
                               >
-                                {{ prod.statusZwrotu || "Pending Review" }}
+                                {{ item.statusZwrotu || "Pending Review" }}
                               </span>
-                            </div>
+                            </div> -->
                           </div>
+                        </div>
+                      </div>
+
+                      <div class="order-summary-footer">
+                        <div class="order-total-expanded">
+                          Total Amount:
+                          <strong
+                            >{{
+                              selectedOrder.calkowitaKwota.toFixed(2)
+                            }}
+                            PLN</strong
+                          >
                         </div>
                       </div>
                     </div>
@@ -832,9 +868,7 @@ onMounted(loadUserDetails)
           </div>
         </div>
 
-        <!-- ZAKŁADKA ADDRESSES -->
         <div v-else-if="activeTab === 'addresses'" class="dashboard-card">
-          <!-- Pozostała część kodu bez zmian -->
           <div class="profile-header">
             <div class="profile-title">
               <h2>Your Saved Addresses</h2>
@@ -975,6 +1009,72 @@ onMounted(loadUserDetails)
                       : "Save Address"
                 }}
               </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="activeTab === 'discount-codes'" class="dashboard-card">
+          <div class="profile-header">
+            <div class="profile-title">
+              <h2>My Discount Codes</h2>
+              <p>Available codes for your purchases</p>
+            </div>
+          </div>
+
+          <div class="details-section">
+            <div
+              v-if="isLoadingCodes"
+              class="empty-state"
+              style="text-align: center; padding: 3rem"
+            >
+              <p class="detail-label">Loading codes...</p>
+            </div>
+
+            <div
+              v-else-if="discountCodes.length > 0"
+              class="details-grid"
+              style="
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 1.5rem;
+              "
+            >
+              <div
+                v-for="code in discountCodes"
+                :key="code.idKodu"
+                class="discount-card"
+                :class="{ 'used-card': code.czyWykorzystany }"
+              >
+                <div class="discount-percentage">
+                  {{ code.znizkaProcentowa }}% OFF
+                </div>
+                <div class="discount-details">
+                  <p
+                    class="discount-code-text"
+                    :class="{ 'used-text': code.czyWykorzystany }"
+                  >
+                    {{ code.kod }}
+                  </p>
+
+                  <button
+                    v-if="!code.czyWykorzystany"
+                    class="btn-copy"
+                    @click="copyToClipboard(code.kod)"
+                  >
+                    <i class="fa-regular fa-copy"></i> Copy Code
+                  </button>
+                  <span v-else class="used-badge">Wykorzystany</span>
+                </div>
+              </div>
+            </div>
+            <div
+              v-else
+              class="empty-state"
+              style="text-align: center; padding: 3rem"
+            >
+              <span style="font-size: 3rem; display: block; margin-bottom: 1rem"
+                >🎟️</span
+              >
+              <p class="detail-label">You don't have any discount codes yet.</p>
             </div>
           </div>
         </div>
@@ -1368,12 +1468,12 @@ onMounted(loadUserDetails)
 }
 
 .item-qty {
-  background-color: #f0f2f8;
+  /* background-color: #f0f2f8;
   color: #3f509e;
   font-weight: 700;
   font-size: 0.8rem;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 4px; */
 }
 
 .item-price {
@@ -1399,7 +1499,6 @@ onMounted(loadUserDetails)
   border-color: #e03a5b !important;
 }
 
-/* --- STYLE OKNA MODALNEGO --- */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -1534,6 +1633,37 @@ onMounted(loadUserDetails)
   background-color: #ffffff;
 }
 
+.btn-action {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action.edit {
+  background-color: #f6f5ff;
+  color: #3f509e;
+  border: 1px solid #3f509e;
+}
+
+.btn-action.edit:hover {
+  background-color: #3f509e;
+  color: #ffffff;
+}
+
+.btn-action.delete {
+  background-color: #fff0f4;
+  color: #fb2e86;
+  border: 1px solid #fb2e86;
+}
+
+.btn-action.delete:hover {
+  background-color: #fb2e86;
+  color: #ffffff;
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.3rem 0.8rem;
@@ -1611,6 +1741,124 @@ onMounted(loadUserDetails)
   opacity: 0;
 }
 
+.discount-card {
+  display: flex;
+  background-color: #fbfbfe;
+  border: 2px dashed #3f509e;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.discount-percentage {
+  background-color: #3f509e;
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 800;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+}
+
+.discount-details {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.discount-code-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #151875;
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+.btn-copy {
+  background: none;
+  border: none;
+  color: #fb2e86;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  transition: opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-copy:hover {
+  opacity: 0.8;
+}
+
+.order-items-section {
+  margin-top: 1.5rem;
+  border-top: 1px dashed #eae8f5;
+  padding-top: 1.5rem;
+}
+
+.items-title {
+  font-size: 1.05rem;
+  color: #151875;
+  margin: 0 0 1rem 0;
+  font-weight: 700;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.item-tile {
+  background: #ffffff;
+  border: 1px solid #eae8f5;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.item-name {
+  font-weight: 600;
+  color: #150e24;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.item-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #8a8fb9;
+}
+
+.item-price {
+  font-weight: 700;
+  color: #3f509e;
+}
+
+.order-total-expanded {
+  margin-top: 1.5rem;
+  text-align: right;
+  font-size: 1.1rem;
+  color: #150e24;
+}
+
+.order-total-expanded strong {
+  color: #3f509e;
+  font-size: 1.4rem;
+  margin-left: 0.5rem;
+}
+
 @media (max-width: 850px) {
   .main-content {
     grid-template-columns: 1fr;
@@ -1647,6 +1895,67 @@ onMounted(loadUserDetails)
     flex-direction: column;
     align-items: flex-start;
     gap: 1.5rem;
+  }
+
+  .discount-card {
+    flex-direction: column;
+  }
+
+  .discount-percentage {
+    min-width: auto;
+    padding: 1rem;
+  }
+
+  .order-summary-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eae8f5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .summary-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.95rem;
+    color: #8a8fb9;
+  }
+
+  .order-total-expanded {
+    margin-top: 0.5rem;
+    text-align: right;
+    font-size: 1.1rem;
+    color: #150e24;
+  }
+
+  .order-total-expanded strong {
+    color: #3f509e;
+    font-size: 1.4rem;
+    margin-left: 0.5rem;
+  }
+
+  .used-card {
+    border-color: #dcdcdc;
+    background-color: #f5f5f5;
+    opacity: 0.7;
+  }
+
+  .used-card .discount-percentage {
+    background-color: #8a8fb9;
+  }
+
+  .used-text {
+    text-decoration: line-through;
+    color: #8a8fb9;
+  }
+
+  .used-badge {
+    color: #8a8fb9;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 }
 </style>

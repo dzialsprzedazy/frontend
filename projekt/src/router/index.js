@@ -23,7 +23,6 @@ const router = createRouter({
       path: "/login",
       name: "login",
       component: () => import("../views/Account/LoginView.vue"),
-      // meta.requiresGuest means that the page is only for GUESTS (not logged in users)
       meta: { requiresGuest: true },
     },
     {
@@ -36,8 +35,16 @@ const router = createRouter({
       path: "/admin",
       name: "adminProfile",
       component: () => import("../views/Admin/AdminProfileView.vue"),
-      // meta.requiresAuth means that the page is only for AUTHENTICATED users (logged in users)
-      meta: {
+      meta: {     
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
+    },
+    {
+      path: "/admin/task-management",
+      name: "adminTaskManagement",
+      component: () => import("../views/Admin/TaskManagementView.vue"),
+      meta: {     
         requiresAuth: true,
         requiresAdmin: true,
       },
@@ -136,7 +143,6 @@ const router = createRouter({
       name: "cart",
       component: () => import("../views/Others/CartView.vue"),
     },
-    // ERROR 404 - MUST BE AT THE END OF THE FILE!
     {
       path: "/:catchAll(.*)",
       component: () => import("../views/NotFoundView.vue"),

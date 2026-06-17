@@ -5,23 +5,31 @@ import { handleErrors } from "../../errors/ErrorHandler.js"
 import ErrorCard from "../../errors/ErrorCard.vue"
 
 const products = ref([])
+const fantasyProducts = ref([])
 const isLoading = ref(false)
+const isFantasyLoading = ref(false)
 const fetchError = ref(null)
+const fantasyError = ref(null)
 
 const loadProducts = async () => {
   isLoading.value = true
   fetchError.value = null
-
   try {
     const response = await api.get("products")
+    products.value = response.data.slice(0, 3).map((item) => {
+      const discount = item.promocjaWProc || 0
+      const originalPrice = item.cena
+      const finalPrice = discount > 0 ? originalPrice * (1 - discount / 100) : originalPrice
 
-    products.value = response.data.slice(0, 3).map((item) => ({
-      id: item.idProduktu,
-      name: item.nazwaProduktu,
-      price: `${item.cena.toFixed(2)} PLN`,
-      author: `${item.autorImie} ${item.autorNazwisko}`,
-      image: item.zdjecie
-    }))
+      return {
+        id: item.idProduktu,
+        name: item.nazwaProduktu,
+        oldPrice: discount > 0 ? `${originalPrice.toFixed(2)} PLN` : null,
+        price: `${finalPrice.toFixed(2)} PLN`,
+        author: `${item.autorImie} ${item.autorNazwisko}`,
+        image: item.zdjecie
+      }
+    })
   } catch (error) {
     handleErrors(error, fetchError)
   } finally {
@@ -29,8 +37,36 @@ const loadProducts = async () => {
   }
 }
 
+const loadDiscountProducts = async () => {
+  isFantasyLoading.value = true
+  fantasyError.value = null
+  try {
+    const response = await api.get("products")
+    fantasyProducts.value = response.data
+      .filter(item => (item.promocjaWProc || 0) > 0)
+      .map((item) => {
+        const discount = item.promocjaWProc || 0
+        const originalPrice = item.cena
+        const finalPrice = originalPrice * (1 - discount / 100)
+        return {
+          id: item.idProduktu,
+          name: item.nazwaProduktu,
+          oldPrice: `${originalPrice.toFixed(2)} PLN`,
+          price: `${finalPrice.toFixed(2)} PLN`,
+          author: `${item.autorImie} ${item.autorNazwisko}`,
+          image: item.zdjecie
+        }
+      })
+  } catch (error) {
+    handleErrors(error, fantasyError)
+  } finally {
+    isFantasyLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadProducts()
+  loadDiscountProducts()
 })
 </script>
 
@@ -113,7 +149,58 @@ onMounted(() => {
             </div>
 
             <div class="product-prices">
-              <span class="current-price">{{ product.price }}</span>
+            <div class="product-prices">
+            <span v-if="product.oldPrice" class="old-price">{{ product.oldPrice }}</span>
+            <span :class="['current-price', { 'discounted': product.oldPrice }]">{{ product.price }}</span>
+          </div>
+          </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section v-if="fantasyProducts.length > 0" class="latest-products promo-section">
+    <div class="products-container">
+      <h2 class="section-title">Tag Discount</h2>
+
+      <div v-if="isFantasyLoading" class="status-message loading">
+        <i class="fa-solid fa-spinner fa-spin"></i> Loading promotions...
+      </div>
+
+      <ErrorCard
+        v-else-if="fantasyError"
+        :message="fantasyError.message"
+        @retry="loadFantasyProducts"
+      />
+
+      <div v-else class="products-grid">
+        <div class="product-card" v-for="product in fantasyProducts" :key="product.id">
+          <div class="product-image-box">
+            <router-link :to="`/products/${product.id}`" class="image-link">
+              <img
+                v-if="product.image"
+                :src="product.image"
+                :alt="product.name"
+                class="product-image"
+              />
+              <i v-else class="fa-regular fa-image"></i>
+            </router-link>
+          </div>
+
+          <div class="product-info">
+            <div class="product-details">
+              <router-link :to="`/products/${product.id}`" class="product-title-link">
+                <span class="product-name">{{ product.name }}</span>
+              </router-link>
+              <span class="product-author">By <strong>{{ product.author }}</strong></span>
+            </div>
+
+            <div class="product-prices">
+              <div class="product-prices">
+              <span v-if="product.oldPrice" class="old-price">{{ product.oldPrice }}</span>
+              <span :class="['current-price', { 'discounted': product.oldPrice }]">{{ product.price }}</span>
+            </div>
             </div>
           </div>
         </div>
@@ -231,7 +318,6 @@ onMounted(() => {
   opacity: 0.5;
 }
 
-/* --- Nowa animacja: Floating Showcase --- */
 .book-showcase {
   position: absolute;
   top: 50%;
@@ -293,7 +379,6 @@ onMounted(() => {
   box-shadow: 0 20px 40px rgba(21, 24, 117, 0.2);
 }
 
-/* Interakcja przy najechaniu (rozsuwanie i łapanie ostrości) */
 .book-showcase:hover .card-left {
   transform: translateX(-130px) scale(0.9) rotate(-6deg);
   opacity: 1;
@@ -338,10 +423,13 @@ onMounted(() => {
   font-size: 1rem;
 }
 
-/* --- Sekcja Ostatnich Produktów --- */
 .latest-products {
-  padding: 6rem 0 10rem 0;
+  padding: 4rem 0 2rem 0;
   background-color: #ffffff;
+}
+
+.promo-section {
+  padding: 2rem 0 10rem 0;
 }
 
 .products-container {
@@ -367,7 +455,7 @@ onMounted(() => {
   gap: 1rem;
   font-size: 1.1rem;
   color: #7d4cd4;
-  padding: 8rem 0;
+  padding: 4rem 0;
   font-weight: 600;
 }
 
@@ -382,7 +470,6 @@ onMounted(() => {
   gap: 2.5rem;
 }
 
-/* --- Style Karty Produktu --- */
 .product-card {
   display: flex;
   flex-direction: column;
@@ -496,7 +583,17 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-/* --- Media Queries --- */
+.old-price {
+  color: #9096b2;
+  text-decoration: line-through;
+  font-size: 0.9rem;
+  margin-right: 0.5rem; /* mały odstęp od nowej ceny */
+}
+
+.current-price.discounted {
+  color: #fb2e86; /* Czerwony/Różowy kolor promocji */
+}
+
 @media (max-width: 1100px) {
   .hero-title {
     font-size: 2.6rem;

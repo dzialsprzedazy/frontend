@@ -71,13 +71,35 @@ const isPostalCodeValid = computed(() => {
   return /^\d{2}-\d{3}$/.test(addressForm.value.kodPocztowy)
 })
 
+// Pomocnicza funkcja do wyliczania ceny po obniżce dla jednego produktu
+const effectivePrice = (product) => {
+  if (!product) return 0
+  const discountProc = product.promocjaWProc || 0
+  return discountProc > 0 ? product.cena * (1 - discountProc / 100) : product.cena
+}
+
+// Poprawka: Obliczanie sumarycznej zniżki wynikającej z promocji procentowych na produkty
+const totalProductsDiscount = computed(() => {
+  if (!cartItems.value) return 0
+  return cartItems.value.reduce((sum, item) => {
+    if (!item.product) return sum
+    const originalPrice = item.product.cena || 0
+    const promoPrice = effectivePrice(item.product)
+    const discountPerItem = originalPrice - promoPrice
+    return sum + (discountPerItem * (item.ilosc || 1))
+  }, 0)
+})
+
+// Poprawka: totalSum uwzględnia teraz faktyczne ceny po obniżkach procentowych
 const totalSum = computed(() => {
-  let total = cartSum.value
+  // Wyliczamy sumę produktów po obniżkach procentowych
+  let total = cartSum.value - totalProductsDiscount.value
 
   if (shippingCost.value != null && shippingCost.value > 0)
     total += shippingCost.value
 
-  if (discount.value != null && discount.value > 0) total -= discount.value
+  if (discount.value != null && discount.value > 0) 
+    total -= discount.value
 
   return total.toFixed(2)
 })
@@ -154,7 +176,6 @@ onMounted(async () => {
     <div class="custom-container main-content">
       <div v-if="cartItems.length > 0" class="cart-grid">
         <div class="products-section">
-          <!-- Nagłówki tabeli koszyka (widoczne tylko na PC) -->
           <div class="cart-items-header desktop-only">
             <div class="h-product">Product</div>
             <div class="h-price">Price</div>
@@ -199,16 +220,24 @@ onMounted(async () => {
                       {{ item.product?.autorNazwisko }}</strong
                     >
                   </p>
-                  <!-- Cena pokazana bezpośrednio pod tytułem na mobile -->
                   <div class="item-mobile-price mobile-only">
-                    {{ item.product?.cena.toFixed(2) }} PLN
+                    <span v-if="item.product?.promocjaWProc > 0" class="old-price-strike me-2">
+                      {{ item.product.cena.toFixed(2) }} PLN
+                    </span>
+                    <span :class="{ 'text-promo': item.product?.promocjaWProc > 0 }">
+                      {{ effectivePrice(item.product).toFixed(2) }} PLN
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <!-- Desktop Kolumny -->
               <div class="item-price desktop-only">
-                {{ item.product?.cena.toFixed(2) }} PLN
+                <div v-if="item.product?.promocjaWProc > 0" class="old-price-strike">
+                  {{ item.product.cena.toFixed(2) }} PLN
+                </div>
+                <div :class="{ 'text-promo': item.product?.promocjaWProc > 0 }">
+                  {{ effectivePrice(item.product).toFixed(2) }} PLN
+                </div>
               </div>
 
               <div class="item-quantity desktop-only">
@@ -220,12 +249,7 @@ onMounted(async () => {
               </div>
 
               <div class="item-total desktop-only">
-                <strong
-                  >{{
-                    (item.product?.cena * item.ilosc).toFixed(2)
-                  }}
-                  PLN</strong
-                >
+                <strong>{{ (effectivePrice(item.product) * item.ilosc).toFixed(2) }} PLN</strong>
               </div>
 
               <button
@@ -236,7 +260,6 @@ onMounted(async () => {
                 <i class="fa-solid fa-trash-can"></i>
               </button>
 
-              <!-- Mobilne Akcje -->
               <div class="mobile-actions-row mobile-only">
                 <div class="quantity-control">
                   <button @click="handleUpdate(item.product, -1)">-</button>
@@ -244,12 +267,7 @@ onMounted(async () => {
                   <button @click="handleUpdate(item.product, 1)">+</button>
                 </div>
                 <div class="mobile-total-box">
-                  <strong
-                    >{{
-                      (item.product?.cena * item.ilosc).toFixed(2)
-                    }}
-                    PLN</strong
-                  >
+                  <strong>{{ (effectivePrice(item.product) * item.ilosc).toFixed(2) }} PLN</strong>
                 </div>
                 <button
                   class="remove-icon-btn"
@@ -267,13 +285,19 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Calculate Shipping Section (Bez zmian stylowych wewnątrz) -->
         <div class="summary-section">
           <h3 class="section-title text-center">Cart Totals</h3>
           <div class="summary-card card-container">
             <div class="summary-row">
               <span>Subtotals:</span>
-              <span>PLN {{ cartSum.toFixed(2) }}</span>
+              <span :class="{ 'old-price-strike': totalProductsDiscount > 0 }">
+                PLN {{ cartSum.toFixed(2) }}
+              </span>
+            </div>
+
+            <div v-if="totalProductsDiscount > 0" class="summary-row promo-row">
+              <span>Product discounts:</span>
+              <span class="text-promo">- PLN {{ totalProductsDiscount.toFixed(2) }}</span>
             </div>
 
             <div v-if="shippingCost" class="summary-row">
@@ -289,10 +313,6 @@ onMounted(async () => {
               <span>PLN {{ totalSum }}</span>
             </div>
 
-            <!-- <p class="shipping-info">
-              <i class="fa-solid fa-circle-check"></i> Shipping & taxes
-              calculated at checkout
-            </p> -->
             <button class="checkout-btn" @click="showCheckout = true">
               Proceed To Checkout
             </button>
@@ -396,10 +416,6 @@ onMounted(async () => {
                 />
               </div>
             </div>
-
-            <!-- <button v-if="!isLocalDelivery" class="calc-btn">
-              Calculate Shipping
-            </button> -->
           </div>
         </div>
       </div>
@@ -420,10 +436,11 @@ onMounted(async () => {
     </div>
   </div>
   <Checkout
-    :show="showCheckout"
-    @close="showCheckout = false"
-    @continue-to-payment="goToPaymentStep"
-  />
+  :show="showCheckout"
+  :discount-amount="totalProductsDiscount"
+  @close="showCheckout = false"
+  @continue-to-payment="goToPaymentStep"
+/>
   <PaymentCheckout
     :show="showPayment"
     @close="showPayment = false"
@@ -644,6 +661,26 @@ onMounted(async () => {
 .item-total strong {
   font-weight: 800;
   color: #3f509e;
+}
+
+/* Nowe / Zaktualizowane klasy dla przecen */
+.old-price-strike {
+  text-decoration: line-through;
+  color: #8a8fb9;
+  font-size: 0.9rem;
+}
+
+.text-promo {
+  color: #fb2e86 !important;
+  font-weight: 600;
+}
+
+.me-2 {
+  margin-right: 0.5rem;
+}
+
+.promo-row {
+  font-size: 0.95rem;
 }
 
 .item-quantity {
