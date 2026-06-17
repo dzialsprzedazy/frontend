@@ -31,7 +31,9 @@ const loadReviews = async () => {
     if (typeof handleErrors === "function") {
       handleErrors(error, fetchError)
     } else {
-      fetchError.value = { message: "Could not load reviews. Please try again." }
+      fetchError.value = {
+        message: "Could not load reviews. Please try again.",
+      }
     }
   } finally {
     isLoading.value = false
@@ -53,10 +55,18 @@ const executeDelete = async () => {
 
   try {
     await api.delete(`reviews/${reviewToDelete.value}`)
-    showAlert({ type: "success", message: "Review deleted successfully.", position: "top-right" })
+    showAlert({
+      type: "success",
+      message: "Review deleted successfully.",
+      position: "top-right",
+    })
     await loadReviews()
   } catch (error) {
-    showAlert({ type: "error", message: "Failed to delete review.", position: "top-right" })
+    showAlert({
+      type: "error",
+      message: "Failed to delete review.",
+      position: "top-right",
+    })
   } finally {
     closeDeleteModal()
   }
@@ -75,7 +85,11 @@ const filteredReviews = computed(() => {
 const handleLogout = () => {
   localStorage.removeItem("token")
   localStorage.removeItem("user")
-  showAlert({ type: "success", message: "Successfully logged out.", position: "top-right" })
+  showAlert({
+    type: "success",
+    message: "Successfully logged out.",
+    position: "top-right",
+  })
   router.push("/login")
 }
 
@@ -98,24 +112,62 @@ onMounted(loadReviews)
       <aside class="sidebar">
         <div class="sidebar-card">
           <ul class="menu-list">
-            <li @click="router.push('/admin')"><span class="icon">🏠</span><span class="menu-text">Dashboard</span></li>
-            <li @click="router.push('/admin/task-management')"><span class="icon">📋</span><span class="menu-text">Task Management</span></li>
-            <li @click="router.push('/admin/product-management')"><span class="icon">🛍️</span><span class="menu-text">Product Management</span></li>
-            <li @click="router.push('/admin/author-management')"><span class="icon">✍️</span><span class="menu-text">Author Management</span></li>
-            <li @click="router.push('/admin/tag-management')"><span class="icon menu-icon-fix"><i class="fa-solid fa-hashtag"></i></span><span class="menu-text">Tag Management</span></li>
-            <li @click="router.push('/admin/user-management')"><span class="icon">👥</span><span class="menu-text">User Management</span></li>
-            <li class="active"><span class="icon">⭐</span><span class="menu-text">Review Management</span></li>
-            <li @click="router.push('/admin/discount-codes')"><span class="icon">🏷️</span><span class="menu-text">Discount Codes</span></li>
-            
-            
+            <li @click="router.push('/admin')">
+              <span class="icon">🏠</span
+              ><span class="menu-text">Dashboard</span>
+            </li>
+            <li @click="router.push('/admin/task-management')">
+              <span class="icon">📋</span>
+              <span class="menu-text">Task Management</span></li>
+            <li>
+              <span class="icon">📦</span
+              ><span class="menu-text">Order Management</span>
+            </li>
+            <li @click="router.push('/admin/product-management')">
+              <span class="icon">🛍️</span
+              ><span class="menu-text">Product Management</span>
+            </li>
+            <li @click="router.push('/admin/author-management')">
+              <span class="icon">✍️</span
+              ><span class="menu-text">Author Management</span>
+            </li>
+            <li @click="router.push('/admin/tag-management')">
+              <span class="icon menu-icon-fix"
+                ><i class="fa-solid fa-hashtag"></i></span
+              ><span class="menu-text">Tag Management</span>
+            </li>
+            <li @click="router.push('/admin/order-management')">
+              <span class="icon">📦</span>
+              <span class="menu-text">Order Management</span>
+            </li>
+            <li @click="router.push('/admin/user-management')">
+              <span class="icon">👥</span
+              ><span class="menu-text">User Management</span>
+            </li>
+            <li class="active">
+              <span class="icon">⭐</span
+              ><span class="menu-text">Review Management</span>
+            </li>
+            <li @click="router.push('/admin/discount-codes')">
+              <span class="icon">🏷️</span
+              ><span class="menu-text">Discount Codes</span>
+            </li>
+
             <li class="divider"></li>
-            <li @click="handleLogout" class="logout-item"><span class="icon">🚪</span><span class="menu-text">Sign Out</span></li>
+            <li @click="handleLogout" class="logout-item">
+              <span class="icon">🚪</span
+              ><span class="menu-text">Sign Out</span>
+            </li>
           </ul>
         </div>
       </aside>
 
       <main class="content-area">
-        <ErrorCard v-if="fetchError" :message="fetchError.message" @retry="loadReviews" />
+        <ErrorCard
+          v-if="fetchError"
+          :message="fetchError.message"
+          @retry="loadReviews"
+        />
 
         <div v-else-if="isLoading" class="dashboard-card loading-state">
           <div class="loader-circle"></div>
@@ -126,36 +178,71 @@ onMounted(loadReviews)
           <div class="modern-toolbar">
             <div class="search-wrapper">
               <i class="fa-solid fa-magnifying-glass"></i>
-              <input v-model="searchQuery" type="text" placeholder="Search by product, user or content..." />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search by product, user or content..."
+              />
             </div>
           </div>
 
           <div class="catalog-section">
             <div class="catalog-header">
-              <h2>Reviews Catalog <span class="count-tag">{{ filteredReviews.length }}</span></h2>
+              <h2>
+                Reviews Catalog
+                <span class="count-tag">{{ filteredReviews.length }}</span>
+              </h2>
             </div>
 
             <div class="author-list-container">
               <div v-if="filteredReviews.length === 0" class="empty-state">
-                <i class="fa-regular fa-comment-dots" style="font-size: 3rem; color: #8a8fb9; margin-bottom: 1rem;"></i>
+                <i
+                  class="fa-regular fa-comment-dots"
+                  style="font-size: 3rem; color: #8a8fb9; margin-bottom: 1rem"
+                ></i>
                 <p>No reviews found.</p>
               </div>
 
-              <div v-for="review in filteredReviews" :key="review.idOpinii" class="author-list-item review-row">
+              <div
+                v-for="review in filteredReviews"
+                :key="review.idOpinii"
+                class="author-list-item review-row"
+              >
                 <div class="review-details-wrap">
                   <div class="review-meta">
-                    <span class="review-product">{{ review.nazwaProduktu }}</span>
-                    <span class="review-user"><i class="fa-solid fa-user" style="font-size: 0.8rem"></i> {{ review.uzytkownikLogin }}</span>
+                    <span class="review-product">{{
+                      review.nazwaProduktu
+                    }}</span>
+                    <span class="review-user"
+                      ><i
+                        class="fa-solid fa-user"
+                        style="font-size: 0.8rem"
+                      ></i>
+                      {{ review.uzytkownikLogin }}</span
+                    >
                     <span class="review-stars">
-                      <span v-for="n in 5" :key="n" :style="{color: n <= review.ocena ? '#ffc416' : '#eae8f5'}">★</span>
+                      <span
+                        v-for="n in 5"
+                        :key="n"
+                        :style="{
+                          color: n <= review.ocena ? '#ffc416' : '#eae8f5',
+                        }"
+                        >★</span
+                      >
                     </span>
-                    <span class="review-date">{{ new Date(review.dataWystawienia).toLocaleDateString() }}</span>
+                    <span class="review-date">{{
+                      new Date(review.dataWystawienia).toLocaleDateString()
+                    }}</span>
                   </div>
                   <p class="review-text">"{{ review.komentarz }}"</p>
                 </div>
 
                 <div class="product-actions">
-                  <button class="icon-btn delete" title="Delete Review" @click="confirmDelete(review.idOpinii)">
+                  <button
+                    class="icon-btn delete"
+                    title="Delete Review"
+                    @click="confirmDelete(review.idOpinii)"
+                  >
                     <i class="fa-solid fa-trash"></i>
                   </button>
                 </div>
@@ -167,14 +254,23 @@ onMounted(loadReviews)
     </div>
 
     <Transition name="modal">
-      <div v-if="showDeleteModal" class="modal-overlay" @click.self="closeDeleteModal">
+      <div
+        v-if="showDeleteModal"
+        class="modal-overlay"
+        @click.self="closeDeleteModal"
+      >
         <div class="modal-box confirm-box">
           <div class="modal-header">
             <h3>Delete Review</h3>
-            <button class="close-btn" @click="closeDeleteModal"><i class="fa-solid fa-xmark"></i></button>
+            <button class="close-btn" @click="closeDeleteModal">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
           <div class="modal-body">
-            <p class="confirm-text">Are you sure you want to delete this review? This action cannot be undone.</p>
+            <p class="confirm-text">
+              Are you sure you want to delete this review? This action cannot be
+              undone.
+            </p>
           </div>
           <div class="modal-footer">
             <button class="btn-text" @click="closeDeleteModal">Cancel</button>
@@ -189,10 +285,7 @@ onMounted(loadReviews)
 </template>
 
 <style scoped>
-
-
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
-
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css");
 
 .page-wrapper {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;

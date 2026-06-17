@@ -226,6 +226,10 @@ onMounted(async () => {
               ></span>
               <span class="menu-text">Tag Management</span>
             </li>
+            <li @click="router.push('/admin/order-management')">
+              <span class="icon">📦</span>
+              <span class="menu-text">Order Management</span>
+            </li>
             <li @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>
               <span class="menu-text">User Management</span>

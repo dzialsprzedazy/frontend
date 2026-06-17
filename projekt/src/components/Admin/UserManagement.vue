@@ -92,7 +92,11 @@ const closeAddAdminModal = () => {
 }
 
 const createAdmin = async () => {
-  if (!adminEmail.value || !adminPassword.value || !adminConfirmPassword.value) {
+  if (
+    !adminEmail.value ||
+    !adminPassword.value ||
+    !adminConfirmPassword.value
+  ) {
     showAlert({
       type: "error",
       message: "Please fill in all fields.",
@@ -130,7 +134,7 @@ const createAdmin = async () => {
     const errorData = error.response?.data
 
     const message = Array.isArray(errorData)
-      ? errorData.map(e => e.description).join(" ")
+      ? errorData.map((e) => e.description).join(" ")
       : errorData || "Failed to create admin account."
 
     showAlert({
@@ -233,6 +237,10 @@ onMounted(loadUsers)
                 ><i class="fa-solid fa-hashtag"></i
               ></span>
               <span class="menu-text">Tag Management</span>
+            </li>
+            <li @click="router.push('/admin/order-management')">
+              <span class="icon">📦</span>
+              <span class="menu-text">Order Management</span>
             </li>
             <li class="active" @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>
@@ -421,18 +429,30 @@ onMounted(loadUsers)
 
             <div class="form-group">
               <label>Password</label>
-              <input v-model="adminPassword" type="password" class="modal-input" />
+              <input
+                v-model="adminPassword"
+                type="password"
+                class="modal-input"
+              />
             </div>
 
             <div class="form-group">
               <label>Confirm Password</label>
-              <input v-model="adminConfirmPassword" type="password" class="modal-input" />
+              <input
+                v-model="adminConfirmPassword"
+                type="password"
+                class="modal-input"
+              />
             </div>
           </div>
 
           <div class="modal-footer">
             <button class="btn-text" @click="closeAddAdminModal">Cancel</button>
-            <button class="btn-primary" @click="createAdmin" :disabled="isCreatingAdmin">
+            <button
+              class="btn-primary"
+              @click="createAdmin"
+              :disabled="isCreatingAdmin"
+            >
               {{ isCreatingAdmin ? "Creating..." : "Create Admin" }}
             </button>
           </div>
