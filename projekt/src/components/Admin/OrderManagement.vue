@@ -517,7 +517,7 @@ onMounted(loadUsers)
 <style scoped>
 .page-wrapper {
   font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f8f9fc;
+  background-color: #ffffff;
   color: #150e24;
   min-height: 100vh;
   padding-bottom: 8rem;

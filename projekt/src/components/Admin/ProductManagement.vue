@@ -9,6 +9,11 @@ import ProductAddModal from "./ProductAddModal.vue"
 import ProductEditModal from "./ProductEditModal.vue"
 
 import api from "@/services/axios.js"
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "TWÓJ_URL_SUPABASE"
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "TWÓJ_KLUCZ_SUPABASE"
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 const router = useRouter()
 const { showAlert } = useAlerts()
@@ -73,10 +78,25 @@ const executeDelete = async () => {
   if (!productToDelete.value) return
 
   try {
-    await api.delete(`products/${productToDelete.value}`)
+    const id = productToDelete.value
+    
+    await api.delete(`products/${id}`)
+
+    const folderPath = `Produkt${id}`
+    const { data: files } = await supabase.storage
+      .from("Produkty")
+      .list(folderPath)
+
+    if (files && files.length > 0) {
+      const filesToRemove = files.map((file) => `${folderPath}/${file.name}`)
+      await supabase.storage
+        .from("Produkty")
+        .remove(filesToRemove)
+    }
+
     showAlert({
       type: "success",
-      message: "Product deleted successfully.",
+      message: "Product and its images deleted successfully.",
       position: "top-right",
     })
     await loadProducts()

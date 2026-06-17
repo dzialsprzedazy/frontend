@@ -2,6 +2,11 @@
 import { ref, computed, onMounted } from "vue"
 import api from "@/services/axios.js"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 const props = defineProps({
   show: Boolean,
@@ -12,6 +17,7 @@ const emit = defineEmits(["close", "product-updated"])
 const { showAlert } = useAlerts()
 
 const isLoading = ref(true)
+const isSubmitting = ref(false)
 
 const authors = ref([])
 const categories = ref([])
@@ -32,6 +38,11 @@ const form = ref({
 
 const authorQuery = ref("")
 const showAuthorDropdown = ref(false)
+
+const imageFile = ref(null)
+const imagePreview = ref(null)
+const isDraggingImage = ref(false)
+const imageInputRef = ref(null)
 
 const filteredAuthors = computed(() => {
   const query = authorQuery.value.toLowerCase().trim()
@@ -63,7 +74,8 @@ const fetchDictionaries = async () => {
     categories.value = categoriesRes.data
     tags.value = tagsRes.data
   } catch (error) {
-    showAlert({ type: "error", message: "Nie udało się załadować słowników." })
+    console.error("Error fetching dictionaries:", error)
+    showAlert({ type: "error", message: "Failed to load dictionaries." })
   }
 }
 
@@ -85,13 +97,17 @@ const fetchProductDetails = async () => {
       tagiIds: data.tagi ? data.tagi.map(t => t.idTagu) : []
     }
 
+    if (form.value.zdjecie) {
+      imagePreview.value = form.value.zdjecie
+    }
+
     const selectedAuthor = authors.value.find(a => a.idAutora === form.value.idAutora)
     if (selectedAuthor) {
       authorQuery.value = `${selectedAuthor.imie} ${selectedAuthor.nazwisko}`
     }
 
   } catch (error) {
-    showAlert({ type: "error", message: "Nie udało się załadować danych produktu." })
+    showAlert({ type: "error", message: "Failed to load product details." })
     emit("close")
   } finally {
     isLoading.value = false
@@ -109,6 +125,17 @@ const handleAuthorInput = () => {
   showAuthorDropdown.value = true
 }
 
+const clearAuthor = () => {
+  authorQuery.value = ""
+  form.value.idAutora = null
+  showAuthorDropdown.value = true
+}
+
+const handleAuthorFocus = (event) => {
+  event.target.select()
+  showAuthorDropdown.value = true
+}
+
 const toggleTag = (idTagu) => {
   const index = form.value.tagiIds.indexOf(idTagu)
   if (index === -1) {
@@ -118,26 +145,102 @@ const toggleTag = (idTagu) => {
   }
 }
 
+const triggerImageSelect = () => imageInputRef.value.click()
+
+const handleImageDrop = (event) => {
+  isDraggingImage.value = false
+  const file = event.dataTransfer.files[0]
+  if (file && file.type.startsWith("image/")) {
+    setImage(file)
+  } else {
+    showAlert({
+      type: "error",
+      message: "Invalid file format. Please upload an image."
+    })
+  }
+}
+
+const handleImageChange = (event) => {
+  const file = event.target.files[0]
+  if (file) setImage(file)
+}
+
+const setImage = (file) => {
+  imageFile.value = file
+  imagePreview.value = URL.createObjectURL(file)
+}
+
+const removeImage = () => {
+  imageFile.value = null
+  form.value.zdjecie = ""
+  if (imagePreview.value && imagePreview.value.startsWith("blob:")) {
+    URL.revokeObjectURL(imagePreview.value)
+  }
+  imagePreview.value = null
+  if (imageInputRef.value) imageInputRef.value.value = ""
+}
+
 const submitEdit = async () => {
-  isLoading.value = true
+  if (
+    !form.value.nazwaProduktu ||
+    !form.value.idAutora ||
+    !form.value.dataWydania ||
+    !form.value.kategoriaId
+  ) {
+    showAlert({ type: "error", message: "Please fill in all required fields." })
+    return
+  }
+
+  isSubmitting.value = true
   try {
+    const folderPath = `Produkt${props.productId}`
+
+    if (imageFile.value || (!imageFile.value && !imagePreview.value)) {
+      const { data: existingFiles } = await supabase.storage
+        .from("Produkty")
+        .list(folderPath)
+
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToRemove = existingFiles.map((file) => `${folderPath}/${file.name}`)
+        await supabase.storage.from("Produkty").remove(filesToRemove)
+      }
+    }
+
+    if (imageFile.value) {
+      const fileExt = imageFile.value.name.split('.').pop()
+      const fileName = `${Date.now()}.${fileExt}`
+      const filePath = `${folderPath}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from("Produkty")
+        .upload(filePath, imageFile.value)
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from("Produkty")
+        .getPublicUrl(filePath)
+
+      form.value.zdjecie = urlData.publicUrl
+    }
+
     const payload = {
       ...form.value,
       kategorieIds: form.value.kategoriaId ? [form.value.kategoriaId] : []
     }
 
     await api.put(`products/${props.productId}`, payload)
-    showAlert({ type: "success", message: "Produkt został zaktualizowany." })
+    showAlert({ type: "success", message: "Product updated successfully." })
     emit("product-updated")
     emit("close")
   } catch (error) {
     const errorMsg = typeof error.response?.data === 'string' 
       ? error.response.data 
-      : error.response?.data?.title || "Błąd podczas zapisywania produktu."
+      : error.response?.data?.title || "An error occurred while saving the product."
       
-    showAlert({ type: "error", message: `Błąd: ${errorMsg}` })
+    showAlert({ type: "error", message: `Error: ${errorMsg}` })
   } finally {
-    isLoading.value = false
+    isSubmitting.value = false
   }
 }
 </script>
@@ -148,8 +251,8 @@ const submitEdit = async () => {
       <div class="modal-box">
         <div class="modal-header">
           <div>
-            <h3>Edytuj Produkt</h3>
-            <span class="subtitle">Zarządzaj informacjami o produkcie</span>
+            <h3>Edit Product</h3>
+            <span class="subtitle">Manage product information</span>
           </div>
           <button class="close-btn" @click="emit('close')">
             <i class="fa-solid fa-xmark"></i>
@@ -159,26 +262,26 @@ const submitEdit = async () => {
         <div class="modal-body" v-if="isLoading">
           <div class="loading-container">
             <div class="loader-circle"></div>
-            <p>Ładowanie danych...</p>
+            <p>Loading data...</p>
           </div>
         </div>
 
         <div class="modal-body custom-scrollbar" v-else>
           <div class="form-group">
-            <label>Nazwa Produktu</label>
-            <input type="text" v-model="form.nazwaProduktu" placeholder="Wprowadź nazwę produktu" />
+            <label>Product Name <span class="required">*</span></label>
+            <input type="text" v-model="form.nazwaProduktu" placeholder="Enter product name" />
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label>Cena (PLN)</label>
+              <label>Price (PLN)</label>
               <div class="input-icon-wrapper">
                 <input type="number" step="0.01" min="0" v-model.number="form.cena" class="pl-8" />
                 <i class="fa-solid fa-coins input-icon"></i>
               </div>
             </div>
             <div class="form-group">
-              <label>Stan Magazynowy</label>
+              <label>Stock</label>
               <div class="input-icon-wrapper">
                 <input type="number" min="0" v-model.number="form.stanMagazynowy" class="pl-8" />
                 <i class="fa-solid fa-box input-icon"></i>
@@ -188,22 +291,27 @@ const submitEdit = async () => {
 
           <div class="form-row">
             <div class="form-group">
-              <label>Data Wydania</label>
+              <label>Release Date <span class="required">*</span></label>
               <input type="date" v-model="form.dataWydania" />
             </div>
             
             <div class="form-group author-dropdown-container">
-              <label>Autor</label>
+              <label>Author <span class="required">*</span></label>
               <div class="combobox-wrapper">
                 <input
                   type="text"
                   v-model="authorQuery"
-                  placeholder="Szukaj autora..."
+                  placeholder="Search author..."
                   @input="handleAuthorInput"
-                  @focus="$event.target.select(); showAuthorDropdown = true"
+                  @focus="handleAuthorFocus"
                   @blur="showAuthorDropdown = false"
                 />
-                <i class="fa-solid fa-chevron-down arrow-icon"></i>
+                <i
+                  v-if="authorQuery"
+                  class="fa-solid fa-xmark clear-icon"
+                  @mousedown.prevent="clearAuthor"
+                ></i>
+                <i v-else class="fa-solid fa-chevron-down arrow-icon"></i>
 
                 <ul v-if="showAuthorDropdown" class="dropdown-list">
                   <li
@@ -214,7 +322,7 @@ const submitEdit = async () => {
                     {{ author.imie }} {{ author.nazwisko }}
                   </li>
                   <li v-if="filteredAuthors.length === 0" class="no-results">
-                    Nie znaleziono autora.
+                    No authors found.
                   </li>
                 </ul>
               </div>
@@ -222,7 +330,59 @@ const submitEdit = async () => {
           </div>
 
           <div class="form-group full-width">
-            <label>Kategoria</label>
+            <label>Product Image</label>
+            <div
+              class="image-dropzone"
+              :class="{
+                'is-dragging': isDraggingImage,
+                'has-image': imagePreview,
+              }"
+              @dragover.prevent="isDraggingImage = true"
+              @dragleave.prevent="isDraggingImage = false"
+              @drop.prevent="handleImageDrop"
+            >
+              <input
+                type="file"
+                accept="image/*"
+                class="hidden-input"
+                ref="imageInputRef"
+                @change="handleImageChange"
+              />
+
+              <div
+                v-if="!imagePreview"
+                class="upload-content"
+                @click="triggerImageSelect"
+              >
+                <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+                <p><strong>Click to upload</strong> or drag and drop</p>
+                <span>PNG, JPG, WEBP</span>
+              </div>
+
+              <div v-else class="image-preview-container">
+                <img :src="imagePreview" alt="Preview" class="preview-img" />
+                <div class="preview-overlay">
+                  <button
+                    type="button"
+                    class="replace-btn"
+                    @click.stop="triggerImageSelect"
+                  >
+                    <i class="fa-solid fa-pen"></i> Replace
+                  </button>
+                  <button
+                    type="button"
+                    class="remove-btn-overlay"
+                    @click.stop="removeImage"
+                  >
+                    <i class="fa-solid fa-trash"></i> Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Category <span class="required">*</span></label>
             <div class="category-pills">
               <div
                 v-for="kat in categories"
@@ -237,7 +397,7 @@ const submitEdit = async () => {
           </div>
 
           <div class="form-group full-width">
-            <label>Tagi</label>
+            <label>Tags</label>
             <div class="category-pills">
               <div
                 v-for="tag in tags"
@@ -251,17 +411,9 @@ const submitEdit = async () => {
             </div>
           </div>
 
-          <div class="form-group">
-            <label>Zdjęcie (URL)</label>
-            <div class="input-icon-wrapper">
-              <input type="text" v-model="form.zdjecie" placeholder="https://..." class="pl-8" />
-              <i class="fa-solid fa-image input-icon"></i>
-            </div>
-          </div>
-
           <div class="form-group full-width">
-            <label>Opis</label>
-            <textarea v-model="form.opis" rows="6" placeholder="Wprowadź szczegółowy opis produktu..."></textarea>
+            <label>Description</label>
+            <textarea v-model="form.opis" rows="4" placeholder="Write a detailed product description..."></textarea>
           </div>
 
           <div class="form-group checkbox-card full-width">
@@ -270,18 +422,18 @@ const submitEdit = async () => {
               <div class="checkbox-custom"></div>
             </div>
             <label for="ukryty" class="checkbox-label">
-              <span class="title">Ukryj produkt</span>
-              <span class="desc">Produkt nie będzie widoczny dla klientów w sklepie.</span>
+              <span class="title">Hide product</span>
+              <span class="desc">The product will not be visible to customers in the store.</span>
             </label>
           </div>
         </div>
 
         <div class="modal-footer">
-          <button class="btn-text" @click="emit('close')" :disabled="isLoading">Anuluj</button>
-          <button class="btn-primary" @click="submitEdit" :disabled="isLoading">
-            <i class="fa-solid fa-spinner fa-spin" v-if="isLoading"></i>
+          <button class="btn-text" @click="emit('close')" :disabled="isSubmitting || isLoading">Cancel</button>
+          <button class="btn-primary" @click="submitEdit" :disabled="isSubmitting || isLoading">
+            <i class="fa-solid fa-spinner fa-spin" v-if="isSubmitting"></i>
             <i class="fa-solid fa-check" v-else></i>
-            {{ isLoading ? "Zapisywanie..." : "Zapisz zmiany" }}
+            {{ isSubmitting ? "Saving..." : "Save Changes" }}
           </button>
         </div>
       </div>
@@ -331,6 +483,7 @@ const submitEdit = async () => {
 .full-width { width: 100%; flex: none; }
 
 label { font-size: 0.9rem; font-weight: 600; color: #151875; }
+.required { color: #fb2e86; margin-left: 2px; }
 
 .input-icon-wrapper { position: relative; }
 .input-icon {
@@ -352,10 +505,13 @@ input:focus, textarea:focus {
 
 .author-dropdown-container { position: relative; }
 .combobox-wrapper { position: relative; }
-.arrow-icon {
+.arrow-icon, .clear-icon {
   position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-  color: #8a8fb9; font-size: 0.9rem; pointer-events: none;
+  color: #8a8fb9; font-size: 0.9rem;
 }
+.arrow-icon { pointer-events: none; }
+.clear-icon { cursor: pointer; transition: color 0.2s; }
+.clear-icon:hover { color: #fb2e86; }
 
 .dropdown-list {
   position: absolute; top: 100%; left: 0; right: 0; background: white;
@@ -379,6 +535,35 @@ input:focus, textarea:focus {
   background-color: #3f509e; color: #ffffff; box-shadow: 0 4px 10px rgba(63, 80, 158, 0.2);
 }
 .pill-label.active.tag.active { background: #8b5ed9 !important; }
+
+.image-dropzone {
+  border: 2px dashed #dcdcdc; border-radius: 12px; background-color: #f8f9ff;
+  transition: all 0.2s ease; position: relative; min-height: 140px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.image-dropzone.is-dragging { border-color: #3f509e; background-color: #f0f2f8; }
+.image-dropzone.has-image { border-style: solid; border-color: #eae8f5; background: #000; }
+.hidden-input { display: none; }
+
+.upload-content { text-align: center; cursor: pointer; padding: 2rem; width: 100%; }
+.drop-icon { font-size: 2rem; color: #3f509e; margin-bottom: 0.5rem; }
+.upload-content p { color: #150e24; font-size: 0.95rem; margin: 0; }
+.upload-content span { color: #8a8fb9; font-size: 0.8rem; }
+
+.image-preview-container { width: 100%; height: 200px; position: relative; }
+.preview-img { width: 100%; height: 100%; object-fit: contain; }
+.preview-overlay {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex;
+  align-items: center; justify-content: center; gap: 1rem; opacity: 0; transition: opacity 0.2s;
+}
+.image-preview-container:hover .preview-overlay { opacity: 1; }
+
+.replace-btn, .remove-btn-overlay {
+  border: none; padding: 0.6rem 1rem; border-radius: 6px; font-weight: 600;
+  font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px;
+}
+.replace-btn { background: #ffffff; color: #151875; }
+.remove-btn-overlay { background: #e03a5b; color: white; }
 
 .checkbox-card {
   display: flex; align-items: flex-start; gap: 1rem; padding: 1.2rem;
