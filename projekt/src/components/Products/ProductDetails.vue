@@ -246,8 +246,16 @@ const submitReview = async () => {
               </div>
 
               <div class="price-box">
-                <span class="current-price">{{ product.cena.toFixed(2) }}</span>
-                <span class="currency">PLN</span>
+                <template v-if="product.promocjaWProc && Number(product.promocjaWProc) > 0">
+                  <span class="old-price-detail">{{ product.cena.toFixed(2) }} PLN</span>
+                  <span class="current-price discounted">
+                    {{ (product.cena * (1 - Number(product.promocjaWProc) / 100)).toFixed(2) }} PLN
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="current-price">{{ product.cena.toFixed(2) }}</span>
+                  <span class="currency">PLN</span>
+                </template>
               </div>
 
               <p class="product-description">
@@ -697,6 +705,18 @@ const submitReview = async () => {
   padding-bottom: 0.8rem;
   border-bottom: 2px solid #f0eefa;
   width: max-content;
+}
+
+.old-price-detail {
+  color: #9096b2;
+  text-decoration: line-through;
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-right: 0.4rem;
+}
+
+.current-price.discounted {
+  color: #fb2e86;
 }
 
 .current-price {
