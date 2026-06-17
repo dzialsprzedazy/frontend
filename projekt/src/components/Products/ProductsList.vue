@@ -364,10 +364,16 @@ const handleAdd = async (product) => {
                 </p>
               </div>
               <div class="price-wrap">
-                <span class="current-price"
-                  >{{ item.cena.toFixed(2) }} <small>PLN</small></span
-                >
-              </div>
+              <template v-if="item.promocjaWProc > 0">
+                <span class="old-price">{{ item.cena.toFixed(2) }} <small>PLN</small></span>
+                <span class="current-price discounted">
+                  {{ (item.cena * (1 - item.promocjaWProc / 100)).toFixed(2) }} <small>PLN</small>
+                </span>
+              </template>
+              <template v-else>
+                <span class="current-price">{{ item.cena.toFixed(2) }} <small>PLN</small></span>
+              </template>
+            </div>
             </div>
 
             <div class="product-tags">
@@ -802,6 +808,18 @@ const handleAdd = async (product) => {
   font-size: 0.9rem;
   color: #8a8fb9;
   font-weight: 500;
+}
+
+.old-price {
+  color: #9096b2;
+  text-decoration: line-through;
+  font-size: 1rem;
+  font-weight: 500;
+  display: block;
+}
+
+.current-price.discounted {
+  color: #fb2e86;
 }
 
 .product-tags {
