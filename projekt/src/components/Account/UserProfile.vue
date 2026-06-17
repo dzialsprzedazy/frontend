@@ -592,6 +592,26 @@ onMounted(loadUserDetails)
                         </span>
                       </div>
                     </div>
+
+                    <div class="order-items-section">
+                    <h4 class="items-title">Ordered Products</h4>
+                    <div class="items-grid">
+                      <div v-for="item in (selectedOrder.pozycje || selectedOrder.Pozycje || [])" :key="item.idProduktu || item.IdProduktu" class="item-tile">
+                        <div class="item-name">{{ item.nazwaProduktu || item.NazwaProduktu }}</div>
+                        <div class="item-meta">
+                          <span class="item-qty">{{ item.ilosc || item.Ilosc }} szt.</span>
+                          <span class="item-price">{{ (item.cena || item.Cena).toFixed(2) }} PLN</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="order-summary-footer">
+                      <div class="order-total-expanded">
+                        Total Amount: <strong>{{ selectedOrder.calkowitaKwota.toFixed(2) }} PLN</strong>
+                      </div>
+                    </div>
+                  </div>
+
                   </div>
                 </Transition>
               </div>
@@ -1124,6 +1144,68 @@ onMounted(loadUserDetails)
   opacity: 0.8;
 }
 
+.order-items-section {
+  margin-top: 1.5rem;
+  border-top: 1px dashed #eae8f5;
+  padding-top: 1.5rem;
+}
+
+.items-title {
+  font-size: 1.05rem;
+  color: #151875;
+  margin: 0 0 1rem 0;
+  font-weight: 700;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.item-tile {
+  background: #ffffff;
+  border: 1px solid #eae8f5;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.item-name {
+  font-weight: 600;
+  color: #150e24;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.item-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #8a8fb9;
+}
+
+.item-price {
+  font-weight: 700;
+  color: #3f509e;
+}
+
+.order-total-expanded {
+  margin-top: 1.5rem;
+  text-align: right;
+  font-size: 1.1rem;
+  color: #150e24;
+}
+
+.order-total-expanded strong {
+  color: #3f509e;
+  font-size: 1.4rem;
+  margin-left: 0.5rem;
+}
+
 @media (max-width: 850px) {
   .main-content {
     grid-template-columns: 1fr;
@@ -1161,6 +1243,35 @@ onMounted(loadUserDetails)
   .discount-percentage {
     min-width: auto;
     padding: 1rem;
+  }
+
+  .order-summary-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eae8f5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .summary-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.95rem;
+    color: #8a8fb9;
+  }
+
+  .order-total-expanded {
+    margin-top: 0.5rem;
+    text-align: right;
+    font-size: 1.1rem;
+    color: #150e24;
+  }
+
+  .order-total-expanded strong {
+    color: #3f509e;
+    font-size: 1.4rem;
+    margin-left: 0.5rem;
   }
 }
 </style>
