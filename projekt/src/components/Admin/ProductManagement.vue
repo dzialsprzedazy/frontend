@@ -848,7 +848,6 @@ onMounted(loadProducts)
   gap: 12px;
 }
 
-/* NASZA PRAWIDŁOWA SIATKA Z 5 KOLUMNAMI */
 .product-row-card {
   display: grid;
   grid-template-columns: 2fr 1fr 140px 110px 90px;
@@ -919,7 +918,6 @@ onMounted(loadProducts)
   text-transform: uppercase;
 }
 
-/* STYLE STANU MAGAZYNOWEGO */
 .product-stock-edit {
   display: flex;
   align-items: center;
