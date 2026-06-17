@@ -118,26 +118,6 @@ const loadDiscountCodes = async () => {
   }
 }
 
-const openOrderDetails = async (orderId) => {
-  if (expandedOrderId.value === orderId) {
-    expandedOrderId.value = null
-    return
-  }
-
-  try {
-    isLoading.value = true
-    const response = await api.get(`users/orders/${orderId}`)
-    
-    selectedOrder.value = response.data
-    expandedOrderId.value = orderId
-    showOrderDetails.value = true
-  } catch (error) {
-    showAlert({ type: "error", message: "Could not load order details." })
-  } finally {
-    isLoading.value = false
-  }
-}
-
 const openAddAddress = () => {
   isEditingAddress.value = false
   currentAddressId.value = null
@@ -246,10 +226,6 @@ const loadUserDetails = async () => {
       position: "top-right",
     })
   }
-}
-
-const switchToAdmin = () => {
-  router.push("/admin")
 }
 
 const startEditing = () => {
@@ -427,14 +403,6 @@ onMounted(loadUserDetails)
             <div v-if="!isEditing" class="action-buttons">
               <button class="btn-primary" @click="startEditing">
                 Edit Profile
-              </button>
-              <button 
-                v-if="isAdmin" 
-                class="btn-outline" 
-                style="border-color: #3f509e; color: #3f509e;" 
-                @click="switchToAdmin"
-              >
-                Switch to Admin Dashboard
               </button>
             </div>
 
@@ -1223,7 +1191,6 @@ onMounted(loadUserDetails)
   background-color: #ffffff;
 }
 
-/* Nowe style przycisków w adresach */
 .btn-action {
   padding: 0.5rem 1rem;
   border-radius: 6px;
@@ -1360,7 +1327,7 @@ onMounted(loadUserDetails)
   text-align: left;
   padding: 0;
   transition: opacity 0.2s;
-  display: inline-flex; /* Dodane dla wyrównania ikonki i tekstu */
+  display: inline-flex;
   align-items: center;
   gap: 6px;
 }

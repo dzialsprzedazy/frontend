@@ -119,10 +119,6 @@ onMounted(loadReviews)
             <li @click="router.push('/admin/task-management')">
               <span class="icon">📋</span>
               <span class="menu-text">Task Management</span></li>
-            <li>
-              <span class="icon">📦</span
-              ><span class="menu-text">Order Management</span>
-            </li>
             <li @click="router.push('/admin/product-management')">
               <span class="icon">🛍️</span
               ><span class="menu-text">Product Management</span>

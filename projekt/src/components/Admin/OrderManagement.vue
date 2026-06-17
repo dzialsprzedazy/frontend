@@ -40,8 +40,6 @@ const loadUsers = async () => {
       fetchedUsers.map(async (user) => {
         try {
           const ordersResponse = await api.get(`OrderHistory/user/${user.id}`)
-
-          // Dodajemy wybrane ID statusu do każdego zamówienia, aby <select> miał domyślną wartość
           const ordersWithStatusSelection = (ordersResponse.data || []).map(
             (order) => {
               const matchedStatus = availableStatuses.value.find(
@@ -213,6 +211,10 @@ onMounted(loadUsers)
             <li @click="router.push('/admin')">
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
+            </li>
+            <li @click="router.push('/admin/task-management')">
+              <span class="icon">📋</span>
+              <span class="menu-text">Task Management</span>
             </li>
             <li @click="router.push('/admin/product-management')">
               <span class="icon">🛍️</span>

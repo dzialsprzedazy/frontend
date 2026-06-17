@@ -162,10 +162,6 @@ const handleLogout = () => {
   router.push("/login")
 }
 
-const switchToUser = () => {
-  router.push("/profile")
-}
-
 onMounted(async () => {
   await loadUserDetails()
 
@@ -283,13 +279,6 @@ onMounted(async () => {
               >
                 <i class="fa-solid fa-pen" style="margin-right: 6px"></i> Edit
                 Details
-              </button>
-              <button 
-                class="btn-outline" 
-                style="border-color: #3f509e; color: #3f509e;" 
-                @click="switchToUser"
-              >
-                Switch to User Dashboard
               </button>
             </div>
 
