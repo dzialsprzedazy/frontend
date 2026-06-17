@@ -12,6 +12,7 @@ const router = useRouter()
 const { showAlert } = useAlerts()
 
 const users = ref([])
+const tags = ref([]) // <--- Nowa lista na tagi z bazy
 const isLoading = ref(false)
 const fetchError = ref(null)
 
@@ -20,19 +21,43 @@ const selectedUsers = ref([])
 const discountCode = ref("")
 const discountPercentage = ref(10)
 
-const loadUsers = async () => {
+// --- Nowe zmienne dla promocji na tag ---
+const selectedTag = ref("")
+const tagDiscountPercentage = ref(15)
+
+const loadData = async () => {
   isLoading.value = true
   fetchError.value = null
 
   try {
-    const response = await api.get("users")
-    users.value = response.data.filter((user) => !user.czyUsuniety)
+    const [usersResponse, tagsResponse] = await Promise.all([
+      api.get("users"),
+      api.get("tags")
+    ])
+    
+    users.value = usersResponse.data.filter((user) => !user.czyUsuniety)
+    
+    // Podgląd w konsoli (F12 -> zakładka Console) – zobaczysz strukturę danych z API
+    console.log("Pobrane tagi z API:", tagsResponse.data)
+
+    // Obsługa sytuacji, gdy API owija tablicę w obiekt (np. { $values: [...] } lub { data: [...] })
+    if (Array.isArray(tagsResponse.data)) {
+      tags.value = tagsResponse.data
+    } else if (tagsResponse.data && Array.isArray(tagsResponse.data.$values)) {
+      tags.value = tagsResponse.data.$values // Częste w .NET przy zachowaniu referencji cyklicznych
+    } else if (tagsResponse.data && Array.isArray(tagsResponse.data.data)) {
+      tags.value = tagsResponse.data.data
+    } else {
+      tags.value = []
+    }
+
   } catch (error) {
+    console.error("Błąd ładowania danych:", error)
     if (typeof handleErrors === "function") {
       handleErrors(error, fetchError)
     } else {
       fetchError.value = {
-        message: "Could not load users list. Please try again.",
+        message: "Could not load data list. Please try again.",
       }
     }
   } finally {
@@ -134,6 +159,55 @@ const sendDiscountCodes = async () => {
   discountPercentage.value = 10
 }
 
+const sendTagDiscount = async () => {
+  if (!selectedTag.value) {
+    showAlert({ type: "warning", message: "Please select a tag.", position: "top-right" })
+    return
+  }
+  if (!tagDiscountPercentage.value || tagDiscountPercentage.value <= 0 || tagDiscountPercentage.value > 100) {
+    showAlert({ type: "error", message: "Please enter a valid discount percentage (1-100).", position: "top-right" })
+    return
+  }
+
+  try {
+    await api.post(`products/tag/${selectedTag.value}/promotion?discountPercentage=${tagDiscountPercentage.value}`)
+    showAlert({
+      type: "success",
+      message: `Discount of ${tagDiscountPercentage.value}% applied to all products with selected tag!`,
+      position: "top-right",
+    })
+    selectedTag.value = ""
+    tagDiscountPercentage.value = 15
+  } catch (error) {
+    showAlert({ type: "error", message: "Failed to apply tag discount.", position: "top-right" })
+  }
+}
+
+const clearTagDiscount = async () => {
+  if (!selectedTag.value) {
+    showAlert({ type: "warning", message: "Please select a tag first.", position: "top-right" })
+    return
+  }
+
+  try {
+    // Wywołanie metody DELETE do backendu
+    await api.delete(`products/tag/${selectedTag.value}/promotion`)
+    
+    showAlert({
+      type: "success",
+      message: `All promotions for the selected tag have been cleared!`,
+      position: "top-right",
+    })
+    
+    // Resetowanie pól formularza
+    selectedTag.value = ""
+    tagDiscountPercentage.value = 15
+  } catch (error) {
+    console.error(error)
+    showAlert({ type: "error", message: "Failed to clear tag discount.", position: "top-right" })
+  }
+}
+
 const handleLogout = () => {
   localStorage.removeItem("token")
   localStorage.removeItem("user")
@@ -157,7 +231,7 @@ const formatDate = (dateString) => {
   }).format(date)
 }
 
-onMounted(loadUsers)
+onMounted(loadData) // Zamienione z loadUsers na ogólne loadData
 </script>
 
 <template>
@@ -190,9 +264,7 @@ onMounted(loadUsers)
               <span class="menu-text">Author Management</span>
             </li>
             <li @click="router.push('/admin/tag-management')">
-              <span class="icon menu-icon-fix"
-                ><i class="fa-solid fa-hashtag"></i
-              ></span>
+              <span class="icon menu-icon-fix"><i class="fa-solid fa-hashtag"></i></span>
               <span class="menu-text">Tag Management</span>
             </li>
             <li @click="router.push('/admin/user-management')">
@@ -220,14 +292,71 @@ onMounted(loadUsers)
         <ErrorCard
           v-if="fetchError"
           :message="fetchError.message"
-          @retry="loadUsers"
+          @retry="loadData"
         />
 
         <div v-else-if="isLoading" class="dashboard-card loading-state">
-          <i class="fa-solid fa-spinner fa-spin"></i> Loading users...
+          <i class="fa-solid fa-spinner fa-spin"></i> Loading data...
         </div>
 
         <div v-else class="animated-content">
+          
+          <div class="dashboard-card action-card tag-discount-card">
+            <h3 class="section-title">Create Tag Promotion</h3>
+
+            <div class="code-generation-wrapper">
+              <div class="field-group expand">
+                <div class="input-with-icon">
+                  <span class="input-icon left">#</span>
+                  <select v-model="selectedTag" class="styled-input styled-select pl-large">
+                  <option value="" disabled selected>Select Tag (e.g. Fantasy, Bestseller)</option>
+                  <option v-for="tag in tags" :key="tag.id || tag.Id || tag.idTagu || tag.IdTagu" :value="tag.id || tag.Id || tag.idTagu || tag.IdTagu">
+                    {{ tag.name || tag.nazwa || tag.Name || tag.Nazwa || tag.nazwaTagu || tag.NazwaTagu || 'Tag ' + (tag.id || tag.idTagu) }}
+                  </option>
+                </select>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <div class="input-with-icon small-input">
+                  <input
+                    type="number"
+                    class="styled-input pr-large text-center"
+                    v-model="tagDiscountPercentage"
+                    placeholder="15"
+                    min="1"
+                    max="100"
+                  />
+                  <span class="input-icon right">%</span>
+                </div>
+                <button
+                  class="btn-primary btn-tag-promo"
+                  @click="sendTagDiscount"
+                  :disabled="!selectedTag || !tagDiscountPercentage"
+                >
+                  <i class="fa-solid fa-tags"></i> Apply Tag Discount
+                </button>
+
+                <button
+                  class="btn-outline btn-clear-promo"
+                  @click="clearTagDiscount"
+                  :disabled="!selectedTag"
+                  type="button"
+                >
+                  <i class="fa-solid fa-trash-can"></i> Clear Active
+                </button>
+              </div>
+            </div>
+
+            <div class="selection-info">
+              <span v-if="selectedTag" class="selected-badge tag-badge">
+                Promotion will apply to all books with this tag
+              </span>
+              <span v-else class="no-selection-text">
+                No tag selected yet. Choose a tag from the list to set global sale.
+              </span>
+            </div>
+          </div>
           <div class="dashboard-card action-card">
             <h3 class="section-title">Create Discount Code</h3>
 
@@ -374,6 +503,39 @@ onMounted(loadUsers)
 </template>
 
 <style scoped>
+/* ========================================================================== */
+/* NOWE STYLE DLA KLASY TAG-DISCOUNT (STYLIZACJA ELEMENTU SELECT I PODŚWIETLEŃ)*/
+/* ========================================================================== */
+.tag-discount-card {
+  background-color: #fdf6f9 !important; /* Delikatny różowo-fioletowy odcień dla rozróżnienia */
+  border: 1px solid #f8cbdc !important;
+}
+
+.styled-select {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23151875' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 2.5rem !important;
+}
+
+.btn-tag-promo {
+  background-color: #fb2e86 !important; /* Akcent dopasowany do aktywnej zakładki */
+}
+
+.btn-tag-promo:hover:not(:disabled) {
+  background-color: #d11e6b !important;
+  box-shadow: 0 4px 12px rgba(251, 46, 134, 0.2) !important;
+}
+
+.tag-badge {
+  background-color: #fce7f3 !important;
+  color: #9d174d !important;
+}
+/* ========================================================================== */
+
 .page-wrapper {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: #ffffff;
@@ -984,5 +1146,30 @@ onMounted(loadUsers)
   .meta-label {
     margin-bottom: 0;
   }
+
+  .action-buttons-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+}
+
+.btn-clear-promo {
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-promo:hover:not(:disabled) {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: #991b1b !important;
+}
+
+.btn-clear-promo:disabled {
+  border-color: #e5e7eb !important;
+  color: #9ca3af !important;
+  cursor: not-allowed;
 }
 </style>

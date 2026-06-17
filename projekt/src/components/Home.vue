@@ -37,34 +37,36 @@ const loadProducts = async () => {
   }
 }
 
-const loadFantasyProducts = async () => {
+const loadDiscountProducts = async () => {
   isFantasyLoading.value = true
   fantasyError.value = null
   try {
-    const response = await api.get("products/tag/Fantasy")
-    fantasyProducts.value = response.data.map((item) => {
-      const discount = item.promocjaWProc || 0;
-      const originalPrice = item.cena;
-      const finalPrice = discount > 0 ? originalPrice * (1 - discount / 100) : originalPrice;
-
-      return {
-        id: item.idProduktu,
-        name: item.nazwaProduktu,
-        oldPrice: discount > 0 ? `${originalPrice.toFixed(2)} PLN` : null,
-        price: `${finalPrice.toFixed(2)} PLN`,
-        author: `${item.autorImie} ${item.autorNazwisko}`,
-        image: item.zdjecie
-      }
-    })
+    const response = await api.get("products")
+    fantasyProducts.value = response.data
+      .filter(item => (item.promocjaWProc || 0) > 0)
+      .map((item) => {
+        const discount = item.promocjaWProc || 0
+        const originalPrice = item.cena
+        const finalPrice = originalPrice * (1 - discount / 100)
+        return {
+          id: item.idProduktu,
+          name: item.nazwaProduktu,
+          oldPrice: `${originalPrice.toFixed(2)} PLN`,
+          price: `${finalPrice.toFixed(2)} PLN`,
+          author: `${item.autorImie} ${item.autorNazwisko}`,
+          image: item.zdjecie
+        }
+      })
   } catch (error) {
     handleErrors(error, fantasyError)
   } finally {
     isFantasyLoading.value = false
   }
 }
+
 onMounted(() => {
   loadProducts()
-  loadFantasyProducts()
+  loadDiscountProducts()
 })
 </script>
 
@@ -158,7 +160,7 @@ onMounted(() => {
     </div>
   </section>
 
-  <section class="latest-products promo-section">
+  <section v-if="fantasyProducts.length > 0" class="latest-products promo-section">
     <div class="products-container">
       <h2 class="section-title">Tag Discount</h2>
 
