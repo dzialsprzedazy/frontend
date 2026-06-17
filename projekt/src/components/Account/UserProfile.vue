@@ -657,14 +657,8 @@ onMounted(loadUserDetails)
                   </p>
                 </div>
                 <div class="action-buttons">
-                  <button class="btn-outline" @click="openEditAddress(addr)" style="padding: 0.5rem 1rem">Edit</button>
-                  <button
-                    class="btn-outline"
-                    @click="deleteAddress(addr.idAdresu)"
-                    style="padding: 0.5rem 1rem; color: #fb2e86; border-color: #fdf2f6;"
-                  >
-                    Delete
-                  </button>
+                  <button class="btn-action edit" @click="openEditAddress(addr)">Edit</button>
+                  <button class="btn-action delete" @click="deleteAddress(addr.idAdresu)">Delete</button>
                 </div>
               </div>
             </div>
@@ -721,21 +715,31 @@ onMounted(loadUserDetails)
             </div>
             
             <div v-else-if="discountCodes.length > 0" class="details-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-              <div 
-                v-for="code in discountCodes" 
-                :key="code.idKodu" 
-                class="discount-card"
-              >
-                <div class="discount-percentage">
-                  {{ code.znizkaProcentowa }}% OFF
-                </div>
-                <div class="discount-details">
-                  <p class="discount-code-text">{{ code.kod }}</p>
-                  <button class="btn-copy" @click="copyToClipboard(code.kod)">Copy Code</button>
-                </div>
+            <div 
+              v-for="code in discountCodes" 
+              :key="code.idKodu" 
+              class="discount-card"
+              :class="{ 'used-card': code.czyWykorzystany }"
+            >
+              <div class="discount-percentage">
+                {{ code.znizkaProcentowa }}% OFF
+              </div>
+              <div class="discount-details">
+                <p class="discount-code-text" :class="{ 'used-text': code.czyWykorzystany }">
+                  {{ code.kod }}
+                </p>
+                
+                <button 
+                  v-if="!code.czyWykorzystany" 
+                  class="btn-copy" 
+                  @click="copyToClipboard(code.kod)"
+                >
+                  <i class="fa-regular fa-copy"></i> Copy Code
+                </button>
+                <span v-else class="used-badge">Wykorzystany</span>
               </div>
             </div>
-            
+          </div>
             <div v-else class="empty-state" style="text-align: center; padding: 3rem">
               <span style="font-size: 3rem; display: block; margin-bottom: 1rem">🎟️</span>
               <p class="detail-label">You don't have any discount codes yet.</p>
@@ -1033,6 +1037,38 @@ onMounted(loadUserDetails)
   background-color: #ffffff;
 }
 
+/* Nowe style przycisków w adresach */
+.btn-action {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action.edit {
+  background-color: #f6f5ff;
+  color: #3f509e;
+  border: 1px solid #3f509e;
+}
+
+.btn-action.edit:hover {
+  background-color: #3f509e;
+  color: #ffffff;
+}
+
+.btn-action.delete {
+  background-color: #fff0f4;
+  color: #fb2e86;
+  border: 1px solid #fb2e86;
+}
+
+.btn-action.delete:hover {
+  background-color: #fb2e86;
+  color: #ffffff;
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.3rem 0.8rem;
@@ -1138,6 +1174,9 @@ onMounted(loadUserDetails)
   text-align: left;
   padding: 0;
   transition: opacity 0.2s;
+  display: inline-flex; /* Dodane dla wyrównania ikonki i tekstu */
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-copy:hover {
@@ -1272,6 +1311,29 @@ onMounted(loadUserDetails)
     color: #3f509e;
     font-size: 1.4rem;
     margin-left: 0.5rem;
+  }
+
+  .used-card {
+    border-color: #dcdcdc;
+    background-color: #f5f5f5;
+    opacity: 0.7;
+  }
+
+  .used-card .discount-percentage {
+    background-color: #8a8fb9; 
+  }
+
+  .used-text {
+    text-decoration: line-through;
+    color: #8a8fb9;
+  }
+
+  .used-badge {
+    color: #8a8fb9;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 }
 </style>
