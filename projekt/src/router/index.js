@@ -37,7 +37,7 @@ const router = createRouter({
       name: "adminProfile",
       component: () => import("../views/Admin/AdminProfileView.vue"),
       // meta.requiresAuth means that the page is only for AUTHENTICATED users (logged in users)
-      meta: {     
+      meta: {
         requiresAuth: true,
         requiresAdmin: true,
       },
@@ -46,7 +46,7 @@ const router = createRouter({
       path: "/admin/discount-codes",
       name: "adminDiscountCodes",
       component: () => import("../views/Admin/DiscountCodesView.vue"),
-      meta: {     
+      meta: {
         requiresAuth: true,
         requiresAdmin: true,
       },
@@ -55,7 +55,7 @@ const router = createRouter({
       path: "/admin/product-management",
       name: "adminProductManagement",
       component: () => import("../views/Admin/ProductManagementView.vue"),
-      meta: {     
+      meta: {
         requiresAuth: true,
         requiresAdmin: true,
       },
@@ -64,7 +64,7 @@ const router = createRouter({
       path: "/admin/user-management",
       name: "adminUserManagement",
       component: () => import("../views/Admin/UserManagementView.vue"),
-      meta: {     
+      meta: {
         requiresAuth: true,
         requiresAdmin: true,
       },
@@ -73,7 +73,7 @@ const router = createRouter({
       path: "/admin/author-management",
       name: "adminAuthorManagement",
       component: () => import("../views/Admin/AuthorManagementView.vue"),
-      meta: {     
+      meta: {
         requiresAuth: true,
         requiresAdmin: true,
       },
@@ -82,7 +82,16 @@ const router = createRouter({
       path: "/admin/tag-management",
       name: "adminTagManagement",
       component: () => import("../views/Admin/TagManagementView.vue"),
-      meta: {     
+      meta: {
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
+    },
+    {
+      path: "/admin/order-management",
+      name: "adminOrderManagement",
+      component: () => import("../views/Admin/OrderManagementView.vue"),
+      meta: {
         requiresAuth: true,
         requiresAdmin: true,
       },
@@ -125,7 +134,7 @@ const router = createRouter({
     {
       path: "/cart",
       name: "cart",
-      component: () => import("../views/Others/CartView.vue"), 
+      component: () => import("../views/Others/CartView.vue"),
     },
     // ERROR 404 - MUST BE AT THE END OF THE FILE!
     {
@@ -143,6 +152,14 @@ router.beforeEach((to, from, next) => {
     next("/login")
   } else if (to.meta.requiresGuest && token) {
     next("/profile")
+  } else if (to.name === "profile") {
+    const isAdmin = user.roles?.includes("Admin")
+
+    if (isAdmin) {
+      next("/admin")
+    } else {
+      next()
+    }
   } else if (to.meta.requiresAdmin) {
     const isAdmin = user.roles?.includes("Admin")
 
