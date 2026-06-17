@@ -29,6 +29,18 @@ const sortBy = ref("default")
 const wishlistProductIds = ref(new Set())
 const isWishlistActionLoading = ref(null)
 
+const isAdmin = computed(() => {
+  try {
+    const userStr = localStorage.getItem("user")
+    if (!userStr) return false
+    const user = JSON.parse(userStr)
+    const roles = user.roles || user.Roles || []
+    return roles.includes("Admin")
+  } catch (e) {
+    return false
+  }
+})
+
 watch(
   () => route.query.search,
   (newSearch) => {
@@ -127,6 +139,10 @@ const toggleWishlist = async (product) => {
 
 const filteredProducts = computed(() => {
   let result = products.value.filter((product) => {
+    if (!isAdmin.value && product.czyUkryty) {
+      return false
+    }
+
     if (selectedCategories.value.length > 0) {
       const hasCategory = product.kategorie.some((c) =>
         selectedCategories.value.includes(c.idKategorii),
@@ -353,6 +369,9 @@ const handleAdd = async (product) => {
                   >
                     {{ item.nazwaProduktu }}
                   </router-link>
+                  <span v-if="item.czyUkryty" class="badge-hidden">
+                    <i class="fa-solid fa-eye-slash"></i> Ukryty
+                  </span>
                 </h2>
                 <p class="product-author">
                   By
@@ -780,6 +799,9 @@ const handleAdd = async (product) => {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 0.3rem 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .product-author {
@@ -967,6 +989,19 @@ const handleAdd = async (product) => {
 
 .product-title-link:hover {
   color: #7d4cd4;
+}
+
+.badge-hidden {
+  font-size: 0.7rem;
+  background-color: #fdf2f4;
+  color: #e03a5b;
+  padding: 3px 6px;
+  border-radius: 6px;
+  margin-left: 8px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 @media (max-width: 1024px) {

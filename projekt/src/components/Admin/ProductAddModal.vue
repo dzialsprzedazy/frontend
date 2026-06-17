@@ -2,6 +2,11 @@
 import { ref, computed, onMounted } from "vue"
 import api from "@/services/axios.js"
 import { useAlerts } from "@/components/alerts/useAlerts.js"
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gpxgaxopnkyxcgdsovxa.supabase.co"
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_e7cdHMYjz9mrizl-JnWaqw_y2yq6TQ5"
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 const props = defineProps({
   show: Boolean,
@@ -175,9 +180,32 @@ const handleSubmit = async () => {
       stanMagazynowy: Number(formData.value.stanMagazynowy),
       kategorieIds: [selectedCategoryId.value],
       tagiIds: selectedTagIds.value,
+      zdjecie: null, 
     }
 
-    await api.post("products", payload)
+    const createResponse = await api.post("products", payload)
+    const createdProduct = createResponse.data
+
+    if (imageFile.value) {
+      const productId = createdProduct.idProduktu
+      const fileExt = imageFile.value.name.split('.').pop()
+      const fileName = `${Date.now()}.${fileExt}`
+      const filePath = `Produkt${productId}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from("Produkty")
+        .upload(filePath, imageFile.value)
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from("Produkty")
+        .getPublicUrl(filePath)
+
+      payload.zdjecie = urlData.publicUrl
+
+      await api.put(`products/${productId}`, payload)
+    }
 
     showAlert({
       type: "success",
@@ -192,6 +220,7 @@ const handleSubmit = async () => {
       type: "error",
       message:
         error.response?.data?.message ||
+        error.message ||
         "An error occurred while adding the product.",
       position: "top-right",
     })
@@ -289,7 +318,7 @@ const handleSubmit = async () => {
             </div>
 
             <div class="form-group full-width">
-              <label>Product Image (Disabled currently)</label>
+              <label>Product Image</label>
               <div
                 class="image-dropzone"
                 :class="{

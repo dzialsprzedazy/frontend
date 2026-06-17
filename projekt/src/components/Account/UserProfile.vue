@@ -11,6 +11,7 @@ const userName = ref("")
 const userSurname = ref("")
 const userEmail = ref("")
 const phoneNumber = ref("")
+const isAdmin = ref(false)
 
 const originalData = ref({})
 
@@ -19,33 +20,31 @@ const isLoading = ref(false)
 
 const activeTab = ref("dashboard")
 
-const selectedOrder = ref(null);
-const showOrderDetails = ref(false);
-const expandedOrderId = ref(null);
-
+const selectedOrder = ref(null)
+const showOrderDetails = ref(false)
+const expandedOrderId = ref(null)
 
 const openOrderDetails = async (orderId) => {
-  
   if (expandedOrderId.value === orderId) {
-    expandedOrderId.value = null;
-    return;
+    expandedOrderId.value = null
+    return
   }
 
   try {
-    isLoading.value = true;
-    const response = await api.get(`users/orders/${orderId}`);
-    
-    selectedOrder.value = response.data;
+    isLoading.value = true
+    const response = await api.get(`users/orders/${orderId}`)
 
-    expandedOrderId.value = orderId;
-    
-    showOrderDetails.value = true;
+    selectedOrder.value = response.data
+
+    expandedOrderId.value = orderId
+
+    showOrderDetails.value = true
   } catch (error) {
-    showAlert({ type: "error", message: "Could not load order details." });
+    showAlert({ type: "error", message: "Could not load order details." })
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
-};
+}
 
 const addresses = ref([])
 const showAddressForm = ref(false)
@@ -63,13 +62,16 @@ const newAddress = ref({
 const orders = ref([])
 const isLoadingOrders = ref(false)
 
+const discountCodes = ref([])
+const isLoadingCodes = ref(false)
+
 const getOrderStatusInfo = (statusId) => {
   const statuses = {
-    1: { text: "W realizacji", class: "status-warning" },
-    2: { text: "Wysłane", class: "status-warning" },
-    3: { text: "Dostarczone", class: "status-success" },
-    4: { text: "Anulowane", class: "status-danger" },
-    5: { text: "Oczekuje na płatność", class: "status-warning" },
+    1: { text: "Pending", class: "status-warning" },
+    2: { text: "Processing", class: "status-warning" },
+    3: { text: "Shipped", class: "status-warning" },
+    4: { text: "Delivered", class: "status-success" },
+    5: { text: "Cancelled", class: "status-danger" },
   }
   return statuses[statusId] || { text: "Nieznany", class: "" }
 }
@@ -104,6 +106,18 @@ const loadOrders = async () => {
   }
 }
 
+const loadDiscountCodes = async () => {
+  try {
+    isLoadingCodes.value = true
+    const response = await api.get("DiscountCodes/my-codes")
+    discountCodes.value = response.data
+  } catch (error) {
+    showAlert({ type: "error", message: "Failed to load discount codes." })
+  } finally {
+    isLoadingCodes.value = false
+  }
+}
+
 const openAddAddress = () => {
   isEditingAddress.value = false
   currentAddressId.value = null
@@ -130,31 +144,32 @@ const openEditAddress = (addr) => {
   showAddressForm.value = true
 }
 
+const saveAddress = async () => {
+  const { miasto, ulica, numerBudynku, kodPocztowy } = newAddress.value
 
-
-  const saveAddress = async () => {
-
-  const { miasto, ulica, numerBudynku, kodPocztowy } = newAddress.value;
-  
-  if (!miasto.trim() || !ulica.trim() || !numerBudynku.trim() || !kodPocztowy.trim()) {
-    showAlert({ type: "error", message: "Uzupełnij wymagane pola!" });
-    return;
+  if (
+    !miasto.trim() ||
+    !ulica.trim() ||
+    !numerBudynku.trim() ||
+    !kodPocztowy.trim()
+  ) {
+    showAlert({ type: "error", message: "Uzupełnij wymagane pola!" })
+    return
   }
 
-  const zipRegex = /^\d{2}-\d{3}$/;
+  const zipRegex = /^\d{2}-\d{3}$/
   if (!zipRegex.test(kodPocztowy)) {
-    showAlert({ type: "error", message: "Kod pocztowy musi mieć format 00-000" });
-    return;
+    showAlert({
+      type: "error",
+      message: "Kod pocztowy musi mieć format 00-000",
+    })
+    return
   }
-
 
   try {
     isLoading.value = true
     if (isEditingAddress.value) {
-      await api.put(
-        `users/addresses/${currentAddressId.value}`,
-        newAddress.value,
-      )
+      await api.put(`users/addresses/${currentAddressId.value}`, newAddress.value)
       showAlert({ type: "success", message: "Address updated successfully!" })
     } else {
       await api.post("users/addresses", newAddress.value)
@@ -185,6 +200,7 @@ const setActiveTab = (tab) => {
   activeTab.value = tab
   if (tab === "addresses") loadAddresses()
   if (tab === "orders") loadOrders()
+  if (tab === "discount-codes") loadDiscountCodes()
 }
 
 const loadUserDetails = async () => {
@@ -196,6 +212,8 @@ const loadUserDetails = async () => {
     userSurname.value = data.nazwisko || ""
     userEmail.value = data.email || ""
     phoneNumber.value = data.telefon || ""
+
+    isAdmin.value = data.roles && data.roles.includes("Admin")
   } catch (error) {
     if (error.response?.status === 401) {
       router.push("/login")
@@ -310,6 +328,14 @@ const changePassword = async () => {
   }
 }
 
+const copyToClipboard = (code) => {
+  navigator.clipboard.writeText(code).then(() => {
+    showAlert({ type: "success", message: "Code copied to clipboard!", position: "top-right" })
+  }).catch(() => {
+    showAlert({ type: "error", message: "Failed to copy code.", position: "top-right" })
+  })
+}
+
 onMounted(loadUserDetails)
 </script>
 
@@ -321,7 +347,13 @@ onMounted(loadUserDetails)
         <p class="breadcrumbs">
           Home <span class="dot-separator">•</span>
           <span class="active-page">{{
-            activeTab === "dashboard" ? "Dashboard" : activeTab === "orders" ? "Order History" : "Saved Addresses"
+            activeTab === "dashboard"
+              ? "Dashboard"
+              : 
+            activeTab === "orders"
+                ? "Order History"
+                : 
+            activeTab === "discount-codes" ? "Discount Codes" : "Saved Addresses"
           }}</span>
         </p>
       </div>
@@ -331,26 +363,21 @@ onMounted(loadUserDetails)
       <aside class="sidebar">
         <div class="sidebar-card">
           <ul class="menu-list">
-            <li
-              :class="{ active: activeTab === 'dashboard' }"
-              @click="setActiveTab('dashboard')"
-            >
+            <li :class="{ active: activeTab === 'dashboard' }" @click="setActiveTab('dashboard')">
               <span class="icon">🏠</span>
               <span class="menu-text">Dashboard</span>
             </li>
-            <li
-              :class="{ active: activeTab === 'orders' }"
-              @click="setActiveTab('orders')"
-            >
+            <li :class="{ active: activeTab === 'orders' }" @click="setActiveTab('orders')">
               <span class="icon">📦</span>
               <span class="menu-text">Order History</span>
             </li>
-            <li
-              :class="{ active: activeTab === 'addresses' }"
-              @click="setActiveTab('addresses')"
-            >
+            <li :class="{ active: activeTab === 'addresses' }" @click="setActiveTab('addresses')">
               <span class="icon">📍</span>
               <span class="menu-text">Saved Addresses</span>
+            </li>
+            <li :class="{ active: activeTab === 'discount-codes' }" @click="setActiveTab('discount-codes')">
+              <span class="icon">🏷️</span>
+              <span class="menu-text">My Discount Codes</span>
             </li>
             <li class="divider"></li>
             <li @click="handleLogout" class="logout-item">
@@ -362,7 +389,6 @@ onMounted(loadUserDetails)
       </aside>
 
       <main class="content-area">
-        
         <div v-if="activeTab === 'dashboard'" class="dashboard-card">
           <div class="profile-header">
             <div class="profile-avatar">
@@ -374,9 +400,11 @@ onMounted(loadUserDetails)
               <p>{{ userEmail }}</p>
             </div>
 
-            <button v-if="!isEditing" class="btn-primary" @click="startEditing">
-              Edit Profile
-            </button>
+            <div v-if="!isEditing" class="action-buttons">
+              <button class="btn-primary" @click="startEditing">
+                Edit Profile
+              </button>
+            </div>
 
             <div v-else class="action-buttons">
               <button
@@ -494,7 +522,7 @@ onMounted(loadUserDetails)
           </div>
         </div>
 
-        
+
         <div v-else-if="activeTab === 'orders'" class="dashboard-card">
           <div class="profile-header">
             <div class="profile-title">
@@ -504,89 +532,185 @@ onMounted(loadUserDetails)
           </div>
 
           <div class="details-section">
-            <div v-if="isLoadingOrders" class="empty-state" style="text-align: center; padding: 3rem">
+            <div
+              v-if="isLoadingOrders"
+              class="empty-state"
+              style="text-align: center; padding: 3rem"
+            >
               <p class="detail-label">Loading orders...</p>
             </div>
-            
-            <div v-else-if="orders.length > 0" class="details-grid" style="grid-template-columns: 1fr; gap: 1.5rem;">
-              <div 
-                v-for="order in orders" 
-                :key="order.idZamowienia" 
+
+            <div
+              v-else-if="orders.length > 0"
+              class="details-grid"
+              style="grid-template-columns: 1fr; gap: 1.5rem"
+            >
+              <div
+                v-for="order in orders"
+                :key="order.idZamowienia"
                 class="security-flex"
-                style="flex-direction: column; align-items: stretch; gap: 0; padding: 0; overflow: hidden;"
+                style="
+                  flex-direction: column;
+                  align-items: stretch;
+                  gap: 0;
+                  padding: 0;
+                  overflow: hidden;
+                "
               >
-                
-                <div style="padding: 1.5rem;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eae8f5; padding-bottom: 1rem; margin-bottom: 1rem;">
+                <div style="padding: 1.5rem">
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      border-bottom: 1px solid #eae8f5;
+                      padding-bottom: 1rem;
+                      margin-bottom: 1rem;
+                    "
+                  >
                     <div>
-                      <span class="detail-label">Order ID: #{{ order.idZamowienia }}</span>
-                      <span class="detail-value" style="display: block; margin-top: 0.3rem;">{{ formatOrderDate(order.dataZamowienia) }}</span>
+                      <span class="detail-label"
+                        >Order ID: #{{ order.idZamowienia }}</span
+                      >
+                      <span
+                        class="detail-value"
+                        style="display: block; margin-top: 0.3rem"
+                        >{{ formatOrderDate(order.dataZamowienia) }}</span
+                      >
                     </div>
-                    <div style="text-align: right;">
+                    <div style="text-align: right">
                       <span class="detail-label">Status</span>
-                      <span 
-                        class="status-badge" 
+                      <span
+                        class="status-badge"
                         :class="getOrderStatusInfo(order.idStatusu).class"
-                        style="display: block; margin-top: 0.3rem;"
+                        style="display: block; margin-top: 0.3rem"
                       >
                         {{ getOrderStatusInfo(order.idStatusu).text }}
                       </span>
                     </div>
                   </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span class="detail-value">Total: <strong>{{ order.calkowitaKwota.toFixed(2) }} PLN</strong></span>
-                    
-                    
-                    <button 
-                      class="btn-outline" 
-                      :class="{ 'active-btn': expandedOrderId === order.idZamowienia }"
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                    "
+                  >
+                    <span class="detail-value"
+                      >Total:
+                      <strong
+                        >{{ order.calkowitaKwota.toFixed(2) }} PLN</strong
+                      ></span
+                    >
+
+                    <button
+                      class="btn-outline"
+                      :class="{
+                        'active-btn': expandedOrderId === order.idZamowienia,
+                      }"
                       @click="openOrderDetails(order.idZamowienia)"
                     >
-                      {{ expandedOrderId === order.idZamowienia ? 'Hide Details' : 'View Details' }}
+                      {{
+                        expandedOrderId === order.idZamowienia
+                          ? "Hide Details"
+                          : "View Details"
+                      }}
                     </button>
                   </div>
                 </div>
 
-                
+
                 <Transition name="details">
-                  <div 
-                    v-if="expandedOrderId === order.idZamowienia && selectedOrder" 
+                  <div
+                    v-if="
+                      expandedOrderId === order.idZamowienia && selectedOrder
+                    "
                     class="expanded-row"
                   >
-                    <div class="details-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; margin-bottom: 0;">
+                    <div
+                      class="details-grid"
+                      style="
+                        grid-template-columns: repeat(
+                          auto-fit,
+                          minmax(150px, 1fr)
+                        );
+                        gap: 1.5rem;
+                        margin-bottom: 0;
+                      "
+                    >
                       <div class="detail-group">
                         <span class="detail-label">Payment Method</span>
-                        <span class="detail-value">{{ selectedOrder.metodaPlatnosciNazwa || 'Standard' }}</span>
+                        <span class="detail-value">{{
+                          selectedOrder.metodaPlatnosciNazwa || "Standard"
+                        }}</span>
                       </div>
                       <div class="detail-group">
                         <span class="detail-label">Delivery Method</span>
-                        <span class="detail-value">{{ selectedOrder.metodaDostawyNazwa || 'Courier' }}</span>
+                        <span class="detail-value">{{
+                          selectedOrder.metodaDostawyNazwa || "Courier"
+                        }}</span>
                       </div>
-                      <div class="detail-group" v-if="selectedOrder.adresZamowienia">
+                      <div
+                        class="detail-group"
+                        v-if="selectedOrder.adresZamowienia"
+                      >
                         <span class="detail-label">Shipping Address</span>
-                        <span class="detail-value" style="font-size: 0.95rem; line-height: 1.4;">
-                          {{ selectedOrder.adresZamowienia.ulica }} {{ selectedOrder.adresZamowienia.numerBudynku }}<br>
-                          {{ selectedOrder.adresZamowienia.kodPocztowy }} {{ selectedOrder.adresZamowienia.miasto }}
+                        <span
+                          class="detail-value"
+                          style="font-size: 0.95rem; line-height: 1.4"
+                        >
+                          {{ selectedOrder.adresZamowienia.ulica }}
+                          {{ selectedOrder.adresZamowienia.numerBudynku }}<br />
+                          {{ selectedOrder.adresZamowienia.kodPocztowy }}
+                          {{ selectedOrder.adresZamowienia.miasto }}
                         </span>
                       </div>
                     </div>
+
+                    <div class="order-items-section">
+                    <h4 class="items-title">Ordered Products</h4>
+                    <div class="items-grid">
+                      <div v-for="item in (selectedOrder.pozycje || selectedOrder.Pozycje || [])" :key="item.idProduktu || item.IdProduktu" class="item-tile">
+                        <div class="item-name">{{ item.nazwaProduktu || item.NazwaProduktu }}</div>
+                        <div class="item-meta">
+                          <span class="item-qty">{{ item.ilosc || item.Ilosc }} szt.</span>
+                          <span class="item-price">{{ (item.cena || item.Cena).toFixed(2) }} PLN</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="order-summary-footer">
+                      <div class="order-total-expanded">
+                        Total Amount: <strong>{{ selectedOrder.calkowitaKwota.toFixed(2) }} PLN</strong>
+                      </div>
+                    </div>
+                  </div>
+
                   </div>
                 </Transition>
               </div>
             </div>
-            <div v-else class="empty-state" style="text-align: center; padding: 3rem">
-              <span style="font-size: 3rem; display: block; margin-bottom: 1rem">📦</span>
+            <div
+              v-else
+              class="empty-state"
+              style="text-align: center; padding: 3rem"
+            >
+              <span style="font-size: 3rem; display: block; margin-bottom: 1rem"
+                >📦</span
+              >
               <p class="detail-label">You haven't placed any orders yet.</p>
-              <button class="btn-primary" style="margin-top: 1rem;" @click="router.push('/products')">
+              <button
+                class="btn-primary"
+                style="margin-top: 1rem"
+                @click="router.push('/products')"
+              >
                 Start Shopping
               </button>
             </div>
           </div>
         </div>
 
-        <!-- ZAKŁADKA ADDRESSES -->
         <div v-else-if="activeTab === 'addresses'" class="dashboard-card">
-          <!-- Pozostała część kodu bez zmian -->
           <div class="profile-header">
             <div class="profile-title">
               <h2>Your Saved Addresses</h2>
@@ -594,7 +718,9 @@ onMounted(loadUserDetails)
             </div>
             <button
               class="btn-primary"
-              @click="showAddressForm ? (showAddressForm = false) : openAddAddress()"
+              @click="
+                showAddressForm ? (showAddressForm = false) : openAddAddress()
+              "
             >
               {{ showAddressForm ? "Cancel" : "Add New Address" }}
             </button>
@@ -606,66 +732,175 @@ onMounted(loadUserDetails)
                 v-for="addr in addresses"
                 :key="addr.idAdresu"
                 class="security-flex"
-                style="justify-content: space-between; align-items: center; margin-bottom: 1rem;"
+                style="
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 1rem;
+                "
               >
                 <div class="address-info">
                   <p class="detail-value">
-                    <strong>{{ addr.ulica }} {{ addr.numerBudynku }}{{ addr.numerLokalu ? "/" + addr.numerLokalu : "" }}</strong>
+                    <strong
+                      >{{ addr.ulica }} {{ addr.numerBudynku
+                      }}{{
+                        addr.numerLokalu ? "/" + addr.numerLokalu : ""
+                      }}</strong
+                    >
                   </p>
-                  <p class="detail-label" style="text-transform: none; margin: 0">
+                  <p
+                    class="detail-label"
+                    style="text-transform: none; margin: 0"
+                  >
                     {{ addr.kodPocztowy }} {{ addr.miasto }}
                   </p>
                 </div>
                 <div class="action-buttons">
-                  <button class="btn-outline" @click="openEditAddress(addr)" style="padding: 0.5rem 1rem">Edit</button>
+                  <button
+                    class="btn-outline"
+                    @click="openEditAddress(addr)"
+                    style="padding: 0.5rem 1rem"
+                  >
+                    Edit
+                  </button>
                   <button
                     class="btn-outline"
                     @click="deleteAddress(addr.idAdresu)"
-                    style="padding: 0.5rem 1rem; color: #fb2e86; border-color: #fdf2f6;"
+                    style="
+                      padding: 0.5rem 1rem;
+                      color: #fb2e86;
+                      border-color: #fdf2f6;
+                    "
                   >
                     Delete
                   </button>
                 </div>
               </div>
             </div>
-            <div v-else class="empty-state" style="text-align: center; padding: 3rem">
-              <span style="font-size: 3rem; display: block; margin-bottom: 1rem">📍</span>
+            <div
+              v-else
+              class="empty-state"
+              style="text-align: center; padding: 3rem"
+            >
+              <span style="font-size: 3rem; display: block; margin-bottom: 1rem"
+                >📍</span
+              >
               <p class="detail-label">No addresses saved yet.</p>
             </div>
           </div>
 
           <div v-else class="password-form-card">
-            <h3 class="section-title">{{ isEditingAddress ? "Edit Address" : "New Address" }}</h3>
+            <h3 class="section-title">
+              {{ isEditingAddress ? "Edit Address" : "New Address" }}
+            </h3>
             <div class="details-grid">
               <div class="detail-group">
                 <span class="detail-label">City</span>
-                <input class="detail-input" v-model="newAddress.miasto" placeholder="e.g. Warsaw" />
+                <input
+                  class="detail-input"
+                  v-model="newAddress.miasto"
+                  placeholder="e.g. Warsaw"
+                />
               </div>
               <div class="detail-group">
                 <span class="detail-label">Street</span>
-                <input class="detail-input" v-model="newAddress.ulica" placeholder="e.g. Kwiatowa" />
+                <input
+                  class="detail-input"
+                  v-model="newAddress.ulica"
+                  placeholder="e.g. Kwiatowa"
+                />
               </div>
               <div class="detail-group">
                 <span class="detail-label">Building No.</span>
-                <input class="detail-input" v-model="newAddress.numerBudynku" placeholder="e.g. 12" />
+                <input
+                  class="detail-input"
+                  v-model="newAddress.numerBudynku"
+                  placeholder="e.g. 12"
+                />
               </div>
               <div class="detail-group">
                 <span class="detail-label">Apartment No.</span>
-                <input class="detail-input" v-model="newAddress.numerLokalu" placeholder="Optional" />
+                <input
+                  class="detail-input"
+                  v-model="newAddress.numerLokalu"
+                  placeholder="Optional"
+                />
               </div>
               <div class="detail-group">
                 <span class="detail-label">Zip Code</span>
-                <input class="detail-input" v-model="newAddress.kodPocztowy" placeholder="00-000" />
+                <input
+                  class="detail-input"
+                  v-model="newAddress.kodPocztowy"
+                  placeholder="00-000"
+                />
               </div>
             </div>
             <div class="action-buttons" style="margin-top: 1.5rem">
-              <button class="btn-outline" @click="showAddressForm = false">Cancel</button>
-              <button class="btn-primary" @click="saveAddress" :disabled="isLoading">
-                {{ isLoading ? "Saving..." : (isEditingAddress ? "Update Address" : "Save Address") }}
+              <button class="btn-outline" @click="showAddressForm = false">
+                Cancel
+              </button>
+              <button
+                class="btn-primary"
+                @click="saveAddress"
+                :disabled="isLoading"
+              >
+                {{
+                  isLoading
+                    ? "Saving..."
+                    : isEditingAddress
+                      ? "Update Address"
+                      : "Save Address"
+                }}
               </button>
             </div>
           </div>
         </div>
+
+        <div v-else-if="activeTab === 'discount-codes'" class="dashboard-card">
+          <div class="profile-header">
+            <div class="profile-title">
+              <h2>My Discount Codes</h2>
+              <p>Available codes for your purchases</p>
+            </div>
+          </div>
+
+          <div class="details-section">
+            <div v-if="isLoadingCodes" class="empty-state" style="text-align: center; padding: 3rem">
+              <p class="detail-label">Loading codes...</p>
+            </div>
+            
+            <div v-else-if="discountCodes.length > 0" class="details-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+            <div 
+              v-for="code in discountCodes" 
+              :key="code.idKodu" 
+              class="discount-card"
+              :class="{ 'used-card': code.czyWykorzystany }"
+            >
+              <div class="discount-percentage">
+                {{ code.znizkaProcentowa }}% OFF
+              </div>
+              <div class="discount-details">
+                <p class="discount-code-text" :class="{ 'used-text': code.czyWykorzystany }">
+                  {{ code.kod }}
+                </p>
+                
+                <button 
+                  v-if="!code.czyWykorzystany" 
+                  class="btn-copy" 
+                  @click="copyToClipboard(code.kod)"
+                >
+                  <i class="fa-regular fa-copy"></i> Copy Code
+                </button>
+                <span v-else class="used-badge">Wykorzystany</span>
+              </div>
+            </div>
+          </div>
+            <div v-else class="empty-state" style="text-align: center; padding: 3rem">
+              <span style="font-size: 3rem; display: block; margin-bottom: 1rem">🎟️</span>
+              <p class="detail-label">You don't have any discount codes yet.</p>
+            </div>
+          </div>
+        </div>
+
       </main>
     </div>
   </div>
@@ -956,6 +1191,37 @@ onMounted(loadUserDetails)
   background-color: #ffffff;
 }
 
+.btn-action {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action.edit {
+  background-color: #f6f5ff;
+  color: #3f509e;
+  border: 1px solid #3f509e;
+}
+
+.btn-action.edit:hover {
+  background-color: #3f509e;
+  color: #ffffff;
+}
+
+.btn-action.delete {
+  background-color: #fff0f4;
+  color: #fb2e86;
+  border: 1px solid #fb2e86;
+}
+
+.btn-action.delete:hover {
+  background-color: #fb2e86;
+  color: #ffffff;
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.3rem 0.8rem;
@@ -981,12 +1247,11 @@ onMounted(loadUserDetails)
   color: #e03a5b;
 }
 
-
 .details-enter-active,
 .details-leave-active {
   transition: all 0.3s ease-in-out;
-  overflow: hidden; 
-  max-height: 500px; 
+  overflow: hidden;
+  max-height: 500px;
 }
 
 .details-enter-from,
@@ -1009,11 +1274,128 @@ onMounted(loadUserDetails)
   background-color: #f6f5ff;
 }
 
-
 .active-btn {
   background-color: #3f509e !important;
   color: white !important;
   border-color: #3f509e !important;
+}
+
+.discount-card {
+  display: flex;
+  background-color: #fbfbfe;
+  border: 2px dashed #3f509e;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.discount-percentage {
+  background-color: #3f509e;
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 800;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+}
+
+.discount-details {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.discount-code-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #151875;
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+.btn-copy {
+  background: none;
+  border: none;
+  color: #fb2e86;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  transition: opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-copy:hover {
+  opacity: 0.8;
+}
+
+.order-items-section {
+  margin-top: 1.5rem;
+  border-top: 1px dashed #eae8f5;
+  padding-top: 1.5rem;
+}
+
+.items-title {
+  font-size: 1.05rem;
+  color: #151875;
+  margin: 0 0 1rem 0;
+  font-weight: 700;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.item-tile {
+  background: #ffffff;
+  border: 1px solid #eae8f5;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.item-name {
+  font-weight: 600;
+  color: #150e24;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.item-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #8a8fb9;
+}
+
+.item-price {
+  font-weight: 700;
+  color: #3f509e;
+}
+
+.order-total-expanded {
+  margin-top: 1.5rem;
+  text-align: right;
+  font-size: 1.1rem;
+  color: #150e24;
+}
+
+.order-total-expanded strong {
+  color: #3f509e;
+  font-size: 1.4rem;
+  margin-left: 0.5rem;
 }
 
 @media (max-width: 850px) {
@@ -1044,6 +1426,67 @@ onMounted(loadUserDetails)
     flex-direction: column;
     align-items: flex-start;
     gap: 1.5rem;
+  }
+  
+  .discount-card {
+    flex-direction: column;
+  }
+  
+  .discount-percentage {
+    min-width: auto;
+    padding: 1rem;
+  }
+
+  .order-summary-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eae8f5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .summary-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.95rem;
+    color: #8a8fb9;
+  }
+
+  .order-total-expanded {
+    margin-top: 0.5rem;
+    text-align: right;
+    font-size: 1.1rem;
+    color: #150e24;
+  }
+
+  .order-total-expanded strong {
+    color: #3f509e;
+    font-size: 1.4rem;
+    margin-left: 0.5rem;
+  }
+
+  .used-card {
+    border-color: #dcdcdc;
+    background-color: #f5f5f5;
+    opacity: 0.7;
+  }
+
+  .used-card .discount-percentage {
+    background-color: #8a8fb9; 
+  }
+
+  .used-text {
+    text-decoration: line-through;
+    color: #8a8fb9;
+  }
+
+  .used-badge {
+    color: #8a8fb9;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 }
 </style>
