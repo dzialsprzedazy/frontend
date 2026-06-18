@@ -169,12 +169,12 @@ onMounted(async () => {
   if (savedTasks) {
     try {
       const tasks = JSON.parse(savedTasks)
-      const pendingTasks = tasks.filter(t => t.status !== "done").length
-      
+      const pendingTasks = tasks.filter((t) => t.status !== "done").length
+
       if (pendingTasks > 0) {
-        showAlert({ 
-          type: "info", 
-          message: `Masz ${pendingTasks} zadań do zrobienia w panelu Task Management.` 
+        showAlert({
+          type: "info",
+          message: `Masz ${pendingTasks} zadań do zrobienia w panelu Task Management.`,
         })
       }
     } catch (e) {
@@ -226,6 +226,10 @@ onMounted(async () => {
               <span class="icon">📦</span>
               <span class="menu-text">Order Management</span>
             </li>
+            <li @click="router.push('/admin/issue-management')">
+              <span class="icon">⚠️</span>
+              <span class="menu-text">Issue Management</span>
+            </li>
             <li @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>
               <span class="menu-text">User Management</span>
@@ -271,18 +275,15 @@ onMounted(async () => {
               <p class="admin-badge">Administrator</p>
               <p class="email-text">{{ adminEmail }}</p>
             </div>
-            
-            <div v-if="!isEditing" class="action-buttons" style="margin-top: 0;">
-              <button
-                class="btn-primary"
-                @click="isEditing = true"
-              >
+
+            <div v-if="!isEditing" class="action-buttons" style="margin-top: 0">
+              <button class="btn-primary" @click="isEditing = true">
                 <i class="fa-solid fa-pen" style="margin-right: 6px"></i> Edit
                 Details
               </button>
             </div>
 
-            <div v-else class="action-buttons" style="margin-top: 0;">
+            <div v-else class="action-buttons" style="margin-top: 0">
               <button
                 class="btn-outline"
                 @click="isEditing = false"

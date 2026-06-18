@@ -32,11 +32,11 @@ const loadData = async () => {
   try {
     const [usersResponse, tagsResponse] = await Promise.all([
       api.get("users"),
-      api.get("tags")
+      api.get("tags"),
     ])
-    
+
     users.value = usersResponse.data.filter((user) => !user.czyUsuniety)
-    
+
     // Podgląd w konsoli (F12 -> zakładka Console) – zobaczysz strukturę danych z API
     console.log("Pobrane tagi z API:", tagsResponse.data)
 
@@ -50,7 +50,6 @@ const loadData = async () => {
     } else {
       tags.value = []
     }
-
   } catch (error) {
     console.error("Błąd ładowania danych:", error)
     if (typeof handleErrors === "function") {
@@ -161,16 +160,30 @@ const sendDiscountCodes = async () => {
 
 const sendTagDiscount = async () => {
   if (!selectedTag.value) {
-    showAlert({ type: "warning", message: "Please select a tag.", position: "top-right" })
+    showAlert({
+      type: "warning",
+      message: "Please select a tag.",
+      position: "top-right",
+    })
     return
   }
-  if (!tagDiscountPercentage.value || tagDiscountPercentage.value <= 0 || tagDiscountPercentage.value > 100) {
-    showAlert({ type: "error", message: "Please enter a valid discount percentage (1-100).", position: "top-right" })
+  if (
+    !tagDiscountPercentage.value ||
+    tagDiscountPercentage.value <= 0 ||
+    tagDiscountPercentage.value > 100
+  ) {
+    showAlert({
+      type: "error",
+      message: "Please enter a valid discount percentage (1-100).",
+      position: "top-right",
+    })
     return
   }
 
   try {
-    await api.post(`products/tag/${selectedTag.value}/promotion?discountPercentage=${tagDiscountPercentage.value}`)
+    await api.post(
+      `products/tag/${selectedTag.value}/promotion?discountPercentage=${tagDiscountPercentage.value}`,
+    )
     showAlert({
       type: "success",
       message: `Discount of ${tagDiscountPercentage.value}% applied to all products with selected tag!`,
@@ -179,32 +192,44 @@ const sendTagDiscount = async () => {
     selectedTag.value = ""
     tagDiscountPercentage.value = 15
   } catch (error) {
-    showAlert({ type: "error", message: "Failed to apply tag discount.", position: "top-right" })
+    showAlert({
+      type: "error",
+      message: "Failed to apply tag discount.",
+      position: "top-right",
+    })
   }
 }
 
 const clearTagDiscount = async () => {
   if (!selectedTag.value) {
-    showAlert({ type: "warning", message: "Please select a tag first.", position: "top-right" })
+    showAlert({
+      type: "warning",
+      message: "Please select a tag first.",
+      position: "top-right",
+    })
     return
   }
 
   try {
     // Wywołanie metody DELETE do backendu
     await api.delete(`products/tag/${selectedTag.value}/promotion`)
-    
+
     showAlert({
       type: "success",
       message: `All promotions for the selected tag have been cleared!`,
       position: "top-right",
     })
-    
+
     // Resetowanie pól formularza
     selectedTag.value = ""
     tagDiscountPercentage.value = 15
   } catch (error) {
     console.error(error)
-    showAlert({ type: "error", message: "Failed to clear tag discount.", position: "top-right" })
+    showAlert({
+      type: "error",
+      message: "Failed to clear tag discount.",
+      position: "top-right",
+    })
   }
 }
 
@@ -268,12 +293,18 @@ onMounted(loadData) // Zamienione z loadUsers na ogólne loadData
               <span class="menu-text">Author Management</span>
             </li>
             <li @click="router.push('/admin/tag-management')">
-              <span class="icon menu-icon-fix"><i class="fa-solid fa-hashtag"></i></span>
+              <span class="icon menu-icon-fix"
+                ><i class="fa-solid fa-hashtag"></i
+              ></span>
               <span class="menu-text">Tag Management</span>
             </li>
             <li @click="router.push('/admin/order-management')">
               <span class="icon">📦</span>
               <span class="menu-text">Order Management</span>
+            </li>
+            <li @click="router.push('/admin/issue-management')">
+              <span class="icon">⚠️</span>
+              <span class="menu-text">Issue Management</span>
             </li>
             <li @click="router.push('/admin/user-management')">
               <span class="icon">👥</span>
@@ -308,7 +339,6 @@ onMounted(loadData) // Zamienione z loadUsers na ogólne loadData
         </div>
 
         <div v-else class="animated-content">
-          
           <div class="dashboard-card action-card tag-discount-card">
             <h3 class="section-title">Create Tag Promotion</h3>
 
@@ -316,12 +346,29 @@ onMounted(loadData) // Zamienione z loadUsers na ogólne loadData
               <div class="field-group expand">
                 <div class="input-with-icon">
                   <span class="input-icon left">#</span>
-                  <select v-model="selectedTag" class="styled-input styled-select pl-large">
-                  <option value="" disabled selected>Select Tag (e.g. Fantasy, Bestseller)</option>
-                  <option v-for="tag in tags" :key="tag.id || tag.Id || tag.idTagu || tag.IdTagu" :value="tag.id || tag.Id || tag.idTagu || tag.IdTagu">
-                    {{ tag.name || tag.nazwa || tag.Name || tag.Nazwa || tag.nazwaTagu || tag.NazwaTagu || 'Tag ' + (tag.id || tag.idTagu) }}
-                  </option>
-                </select>
+                  <select
+                    v-model="selectedTag"
+                    class="styled-input styled-select pl-large"
+                  >
+                    <option value="" disabled selected>
+                      Select Tag (e.g. Fantasy, Bestseller)
+                    </option>
+                    <option
+                      v-for="tag in tags"
+                      :key="tag.id || tag.Id || tag.idTagu || tag.IdTagu"
+                      :value="tag.id || tag.Id || tag.idTagu || tag.IdTagu"
+                    >
+                      {{
+                        tag.name ||
+                        tag.nazwa ||
+                        tag.Name ||
+                        tag.Nazwa ||
+                        tag.nazwaTagu ||
+                        tag.NazwaTagu ||
+                        "Tag " + (tag.id || tag.idTagu)
+                      }}
+                    </option>
+                  </select>
                 </div>
               </div>
 
@@ -361,7 +408,8 @@ onMounted(loadData) // Zamienione z loadUsers na ogólne loadData
                 Promotion will apply to all books with this tag
               </span>
               <span v-else class="no-selection-text">
-                No tag selected yet. Choose a tag from the list to set global sale.
+                No tag selected yet. Choose a tag from the list to set global
+                sale.
               </span>
             </div>
           </div>
@@ -1156,10 +1204,10 @@ onMounted(loadData) // Zamienione z loadUsers na ogólne loadData
   }
 
   .action-buttons-wrapper {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
 }
 
 .btn-clear-promo {

@@ -35,7 +35,7 @@ const router = createRouter({
       path: "/admin",
       name: "adminProfile",
       component: () => import("../views/Admin/AdminProfileView.vue"),
-      meta: {     
+      meta: {
         requiresAuth: true,
         requiresAdmin: true,
       },
@@ -44,7 +44,7 @@ const router = createRouter({
       path: "/admin/task-management",
       name: "adminTaskManagement",
       component: () => import("../views/Admin/TaskManagementView.vue"),
-      meta: {     
+      meta: {
         requiresAuth: true,
         requiresAdmin: true,
       },
@@ -102,6 +102,12 @@ const router = createRouter({
         requiresAuth: true,
         requiresAdmin: true,
       },
+    },
+    {
+      path: "/admin/issue-management",
+      name: "adminIssuewManagement",
+      component: () => import("../views/Admin/IssuesManagement.vue"),
+      meta: { requiresAuth: true },
     },
     {
       path: "/admin/review-management",
