@@ -39,11 +39,10 @@ const openOrderDetails = async (orderId) => {
     expandedOrderId.value = orderId
 
     showOrderDetails.value = true
-    console.log(selectedOrder.value)
     isReportIssuePossible.value = selectedOrder.value.idStatusu != 5
   } catch (error) {
     showAlert({ type: "error", message: "Could not load order details." })
-    console.log(error)
+    console.error(error)
   } finally {
     isLoading.value = false
   }
@@ -334,7 +333,22 @@ const discardChanges = () => {
   phoneNumber.value = originalData.value.phoneNumber
   isEditing.value = false
 }
-
+const getProblemStatusClass = (status) => {
+  if (!status) return "dot-gray"
+  console.log(status)
+  switch (status) {
+    case 4:
+      return "dot-red"
+    case 1:
+    case 2:
+      return "dot-orange"
+    case 3:
+    case 5:
+      return "dot-green"
+    default:
+      return "dot-gray"
+  }
+}
 const saveUserDetails = async () => {
   try {
     isLoading.value = true
@@ -789,9 +803,24 @@ onMounted(loadUserDetails)
                           :key="item.idProduktu || item.IdProduktu"
                           class="item-tile"
                         >
-                          <div class="item-name">
-                            {{ item.nazwaProduktu || item.NazwaProduktu }}
+                          <div
+                            class="order-item-name-wrapper"
+                            style="display: flex; align-items: center"
+                          >
+                            <span
+                              v-if="item.idStatusuZwrotu"
+                              class="status-dot"
+                              :class="
+                                getProblemStatusClass(item.idStatusuZwrotu)
+                              "
+                              :title="'Problem status: ' + item.idStatusuZwrotu"
+                            ></span>
+
+                            <span class="item-name">{{
+                              item.nazwaProduktu
+                            }}</span>
                           </div>
+
                           <div class="item-meta">
                             <span class="item-qty"
                               >{{ item.ilosc || item.Ilosc }} szt.</span
@@ -812,22 +841,6 @@ onMounted(loadUserDetails)
                             >
                               ⚠️
                             </button>
-                            <!-- <div
-                              v-else-if="
-                                item.idStatusuZwrotu
-                              "
-                              class="status-badge-container"
-                            >
-                              <p class="detail-label">Claim Status:</p>
-                              <span
-                                :class="[
-                                  'status-badge',
-                                  getStatusClass(item.idStatusuZwrotu),
-                                ]"
-                              >
-                                {{ item.statusZwrotu || "Pending Review" }}
-                              </span>
-                            </div> -->
                           </div>
                         </div>
                       </div>
@@ -1468,12 +1481,12 @@ onMounted(loadUserDetails)
 }
 
 .item-qty {
-  /* background-color: #f0f2f8;
+  background-color: #f0f2f8;
   color: #3f509e;
   font-weight: 700;
   font-size: 0.8rem;
   padding: 2px 6px;
-  border-radius: 4px; */
+  border-radius: 4px;
 }
 
 .item-price {
@@ -1666,14 +1679,40 @@ onMounted(loadUserDetails)
 
 .status-badge {
   display: inline-block;
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
+  padding: 0.6rem 0.6rem;
+  border-radius: 70px;
   font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
 
+.dot-red {
+  background-color: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+}
+
+.dot-orange {
+  background-color: #f97316;
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.5);
+}
+
+.dot-green {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.dot-gray {
+  background-color: #9ca3af;
+}
 .status-success {
   background-color: #e6fbd9;
   color: #2e7d32;

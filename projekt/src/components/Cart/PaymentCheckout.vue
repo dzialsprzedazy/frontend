@@ -14,6 +14,10 @@ import {
 
 const props = defineProps({
   show: Boolean,
+  discountAmount: {
+    type: Number,
+    default: 0,
+  },
 })
 const emit = defineEmits(["close", "order-placed", "back"])
 
@@ -30,18 +34,25 @@ const appliedDiscount = ref(0)
 const discountError = ref(false)
 const isApplyingDiscount = ref(false)
 
+const orderSuccess = ref(false)
+const finalOrderItems = ref([])
+const finalOrderTotal = ref(0)
+const finalOrderId = ref("Pending")
+
 const blikCode = ref("")
 const cardData = ref({ cardNumber: "", date: "", ccv: "" })
 const bankTransferDetails = ref({
-  accountNumber: "PL 12 3456 7890 0000 0000 1234 5678",
-  title: "ORDER-" + Math.floor(Math.random() * 1000000),
+  accountNumber: "12 3456 7890 0000 0000 0000 0000",
+  title: "ORDER #[order number]",
 })
 
 const isPaymentValid = () => {
   const isEmpty = (value) => value == null || value.trim() === ""
 
   if (selectedPayment.value?.id === 1)
-    return !isEmpty(blikCode.value) && blikCode.value.length === 6
+    return (
+      !isEmpty(blikCode.value) && blikCode.value.replace(/\s/g, "").length === 6
+    )
   if (selectedPayment.value?.id === 2)
     return (
       !isEmpty(cardData.value.cardNumber) &&
@@ -59,7 +70,7 @@ const paymentMethods = [
 ]
 
 const totalOrderSum = computed(() => {
-  const sum = cartSum.value + shippingCost.value
+  const sum = cartSum.value + shippingCost.value - props.discountAmount
   const dis = discount.value
     ? sum * (discount.value.znizkaProcentowa / 100.0)
     : 0
@@ -156,23 +167,38 @@ const handleFinalizeOrder = async () => {
       imie: addressForm.value.firstName,
       nazwisko: addressForm.value.lastName,
       numerTelefonu: addressForm.value.phone,
-      idKodu: discount.value ? discount.value.idKodu : null
+      idKodu: discount.value ? discount.value.idKodu : null,
     }
+    let response
+    if (isLoggedIn.value)
+      response = await api.post("users/orders", orderPayload)
+    else response = await api.post("users/orders/guest", orderPayload)
+    finalOrderItems.value = [...cartItems.value]
+    finalOrderTotal.value = paymentAmount
 
-    console.log("Wysyłanie zamówienia:", orderPayload)
-    if (isLoggedIn.value) await api.post("users/orders", orderPayload)
-    else await api.post("users/orders/guest", orderPayload)
-    
+    finalOrderId.value = response?.data?.idZamowienia || "N/A"
+    // finalOrderId.value = 55
+    console.log(finalOrderItems.value)
+    if (selectedPayment.value.id === 3) {
+      bankTransferDetails.value.title = `Order #${finalOrderId.value}`
+    }
     clearCart()
     emit("order-placed")
-    emit("close")
+    orderSuccess.value = true
   } catch (error) {
     console.error("Order error:", error)
   } finally {
     isSubmitting.value = false
   }
 }
-
+const closeSuccessModal = () => {
+  emit("close")
+  setTimeout(() => {
+    orderSuccess.value = false
+    selectedPayment.value = null
+    placedOrderFlag.value = false
+  }, 300)
+}
 onMounted(async () => {
   await loadAddresses()
 })
@@ -183,10 +209,14 @@ onMounted(async () => {
     <div v-if="show" class="modal-mask" @click.self="emit('close')">
       <div class="modal-container">
         <div class="modal-header">
-          <h2>Summary & Payment</h2>
+          <h2>
+            {{
+              orderSuccess ? "Order Placed Successfully!" : "Summary & Payment"
+            }}
+          </h2>
           <button
             class="close-btn"
-            @click="emit('close')"
+            @click="orderSuccess ? closeSuccessModal() : emit('close')"
             :disabled="isSubmitting"
           >
             &times;
@@ -194,7 +224,7 @@ onMounted(async () => {
         </div>
 
         <div class="modal-body">
-          <div class="checkout-flow-form">
+          <div v-if="!orderSuccess" class="checkout-flow-form">
             <div class="checkout-section mb-4">
               <h3 class="section-subtitle">Order Summary Details</h3>
               <div class="summary-box mt-3">
@@ -264,12 +294,11 @@ onMounted(async () => {
                   <input
                     v-model="blikCode"
                     type="text"
-                    maxlength="6"
+                    maxlength="7"
                     placeholder="000 000"
                     class="input-field"
                   />
                 </div>
-
                 <div v-if="selectedPayment.id === 2" class="card-form">
                   <input
                     v-model="cardData.cardNumber"
@@ -289,86 +318,119 @@ onMounted(async () => {
                     />
                   </div>
                 </div>
-
                 <div v-if="selectedPayment.id === 3" class="transfer-info">
                   <p>Please make a transfer to the following account:</p>
                   <div class="info-box">
                     <strong>Account:</strong>
                     {{ bankTransferDetails.accountNumber }}<br />
-                    <strong>Title:</strong> {{ bankTransferDetails.title }}
+                    <strong>Title:</strong> ORDER #[will be generated]
                   </div>
                 </div>
               </div>
             </div>
 
-            <div v-if="isLoggedIn" class="checkout-section mb-4">
-              <h3 class="section-subtitle">Discount Code</h3>
-              <div class="discount-container mt-3">
-                <div
-                  class="discount-input-group"
-                  :class="{ 'error-state': discountError }"
-                >
-                  <input
-                    v-model="discountCode"
-                    type="text"
-                    placeholder="Enter discount code"
-                    class="input-field"
-                    @keyup.enter="applyDiscount"
-                  />
-                  <button
-                    class="btn-secondary check-btn"
-                    @click="applyDiscount"
-                    :disabled="isApplyingDiscount || !discountCode.trim()"
-                  >
-                    {{
-                      isApplyingDiscount
-                        ? "..."
-                        : discount
-                          ? "Applied"
-                          : "Check"
-                    }}
-                  </button>
-                </div>
-                <span
-                  v-if="discountError"
-                  class="error-text mt-2"
-                  style="display: block"
-                >
-                  Invalid or expired discount code.
-                </span>
-              </div>
-            </div>
-
             <div class="order-summary-box p-3 mt-4 mb-2">
-              <div v-if="discount" class="summary-line discount-line mb-2">
-                <span>Discount ({{ discount.kod }}):</span>
-                <span class="discount-price"
-                  >- PLN {{ appliedDiscount.toFixed(2) }}</span
-                >
-              </div>
               <div class="summary-line total-line">
                 <span>Total to Pay:</span>
                 <span class="total-price">PLN {{ totalOrderSum }}</span>
               </div>
             </div>
           </div>
+
+          <div v-else class="success-flow-form">
+            <div class="success-header-content">
+              <i class="fa-solid fa-check-circle success-icon mb-2"></i>
+              <h3>Thank you for your order!</h3>
+              <p class="order-number-text">
+                Your order number is: <strong>#{{ finalOrderId }}</strong>
+              </p>
+            </div>
+
+            <div
+              v-if="selectedPayment && selectedPayment.id === 3"
+              class="bank-transfer-alert mt-4"
+            >
+              <h4 class="alert-title">
+                <i class="fa-solid fa-building-columns"></i> Bank Transfer
+                Instructions
+              </h4>
+              <p>Please transfer the exact amount to complete your order:</p>
+              <div class="bank-details-box">
+                <div class="detail-row">
+                  <span>Account:</span>
+                  <strong>{{ bankTransferDetails.accountNumber }}</strong>
+                </div>
+                <div class="detail-row mt-2">
+                  <span>Title:</span>
+                  <strong>{{ bankTransferDetails.title }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="order-summary-box p-3 mt-4">
+              <h4
+                class="mb-3"
+                style="
+                  color: #151875;
+                  border-bottom: 1px solid #eae8f5;
+                  padding-bottom: 5px;
+                "
+              >
+                Items Ordered:
+              </h4>
+              <div
+                v-for="(item, index) in finalOrderItems"
+                :key="index"
+                class="summary-line mb-2"
+              >
+                <span style="flex: 2">{{
+                  item.product.nazwaProduktu || "Product"
+                }}</span>
+                <span style="flex: 1; text-align: center"
+                  >x{{ item.ilosc }}</span
+                >
+                <span style="flex: 1; text-align: right; color: #4a405c"
+                  >{{ (item.product.cenaPoPromocji || 0).toFixed(2) }} PLN</span
+                >
+              </div>
+              <div
+                class="summary-line total-line mt-3 pt-3"
+                style="border-top: 2px dashed #c2c6e2"
+              >
+                <span>Total Paid:</span>
+                <span class="total-price">PLN {{ finalOrderTotal }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="modal-footer">
-          <button
-            class="btn-secondary"
-            @click="emit('back')"
-            :disabled="isSubmitting"
-          >
-            Back
-          </button>
-          <button
-            class="btn-primary"
-            @click="handleFinalizeOrder"
-            :disabled="isSubmitting"
-          >
-            {{ isSubmitting ? "Processing..." : "Pay & Complete Order" }}
-          </button>
+          <template v-if="!orderSuccess">
+            <button
+              class="btn-secondary"
+              @click="emit('back')"
+              :disabled="isSubmitting"
+            >
+              Back
+            </button>
+            <button
+              class="btn-primary"
+              @click="handleFinalizeOrder"
+              :disabled="isSubmitting"
+            >
+              {{ isSubmitting ? "Processing..." : "Pay & Complete Order" }}
+            </button>
+          </template>
+
+          <template v-else>
+            <button
+              class="btn-primary"
+              style="width: 100%"
+              @click="closeSuccessModal"
+            >
+              Continue Shopping
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -729,7 +791,59 @@ button:disabled {
 .modal-leave-to .modal-container {
   transform: scale(0.95);
 }
+.success-header-content {
+  text-align: center;
+  padding: 1rem 0;
+}
 
+.success-icon {
+  font-size: 3.5rem;
+  color: #10b981;
+}
+
+.success-header-content h3 {
+  color: #151875;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+.order-number-text {
+  color: #8a8fb9;
+  font-size: 1.1rem;
+}
+
+.bank-transfer-alert {
+  background-color: #fff8e1;
+  border-left: 4px solid #f59e0b;
+  border-radius: 6px;
+  padding: 1.25rem;
+  color: #4a405c;
+}
+
+.alert-title {
+  color: #b45309;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.bank-details-box {
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #fde68a;
+  margin-top: 10px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pt-3 {
+  padding-top: 1rem;
+}
 @media (max-width: 600px) {
   .modal-body {
     padding: 1.5rem;

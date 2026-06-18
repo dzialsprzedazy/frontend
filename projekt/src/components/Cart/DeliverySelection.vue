@@ -8,8 +8,6 @@ const props = defineProps({
   },
 })
 
-// const emit = defineEmits(["update:isLocalDelivery"])
-
 const deliveryMethods = [
   { id: 1, name: "Standard Courier", price: 15.0, icon: "fa-solid fa-truck" },
   { id: 2, name: "Express Shipping", price: 25.5, icon: "fa-solid fa-bolt" },
@@ -19,8 +17,6 @@ selectedDelivery.value = deliveryMethods[0]
 const selectMethod = (method) => {
   selectedDelivery.value = method
   isLocalDelivery.value = method.id === 3
-  console.log(method.id === 3)
-  // emit("update:isLocalDelivery", isLocal)
 }
 </script>
 
@@ -61,8 +57,6 @@ const selectMethod = (method) => {
   text-align: left;
 }
 
-/* --- WARIANTY --- */
-/* Wariant pionowej listy (koszyk) */
 .delivery-layout.variant-list {
   display: flex;
   flex-direction: column;
@@ -102,7 +96,6 @@ const selectMethod = (method) => {
   gap: 4px;
 }
 
-/* --- BAZOWE STYLE KAFELKÓW --- */
 .delivery-card-option {
   background: #ffffff;
   border: 1px solid #dcdcdc;

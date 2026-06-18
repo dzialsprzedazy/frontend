@@ -10,13 +10,12 @@ import {
 } from "@/components/Cart/cartLogic"
 import DeliverySelection from "./DeliverySelection.vue"
 
-// Zaktualizowane propsy – przyjmują teraz kwotę rabatu na produkty
 const props = defineProps({
   show: Boolean,
   discountAmount: {
     type: Number,
-    default: 0
-  }
+    default: 0,
+  },
 })
 const emit = defineEmits(["close", "continue-to-payment"])
 
@@ -54,13 +53,11 @@ const isFormInvalid = () => {
   )
 }
 
-// POPRAWKA: Od bazowej sumy odejmujemy przekazany rabat i dodajemy wysyłkę
 const totalOrderSum = computed(() => {
   const pureTotal = cartSum.value - props.discountAmount + shippingCost.value
   return pureTotal.toFixed(2)
 })
 
-/* Reszta funkcji (loadUserProfile, verifyAndSetAddress, handleProceedToPayment, onMounted) pozostaje bez zmian */
 const loadUserProfile = async () => {
   if (!isLoggedIn.value) return
   isLoading.value = true

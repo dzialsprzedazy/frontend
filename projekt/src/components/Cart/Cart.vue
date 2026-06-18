@@ -71,14 +71,14 @@ const isPostalCodeValid = computed(() => {
   return /^\d{2}-\d{3}$/.test(addressForm.value.kodPocztowy)
 })
 
-// Pomocnicza funkcja do wyliczania ceny po obniżce dla jednego produktu
 const effectivePrice = (product) => {
   if (!product) return 0
   const discountProc = product.promocjaWProc || 0
-  return discountProc > 0 ? product.cena * (1 - discountProc / 100) : product.cena
+  return discountProc > 0
+    ? product.cena * (1 - discountProc / 100)
+    : product.cena
 }
 
-// Poprawka: Obliczanie sumarycznej zniżki wynikającej z promocji procentowych na produkty
 const totalProductsDiscount = computed(() => {
   if (!cartItems.value) return 0
   return cartItems.value.reduce((sum, item) => {
@@ -86,20 +86,17 @@ const totalProductsDiscount = computed(() => {
     const originalPrice = item.product.cena || 0
     const promoPrice = effectivePrice(item.product)
     const discountPerItem = originalPrice - promoPrice
-    return sum + (discountPerItem * (item.ilosc || 1))
+    return sum + discountPerItem * (item.ilosc || 1)
   }, 0)
 })
 
-// Poprawka: totalSum uwzględnia teraz faktyczne ceny po obniżkach procentowych
 const totalSum = computed(() => {
-  // Wyliczamy sumę produktów po obniżkach procentowych
   let total = cartSum.value - totalProductsDiscount.value
 
   if (shippingCost.value != null && shippingCost.value > 0)
     total += shippingCost.value
 
-  if (discount.value != null && discount.value > 0) 
-    total -= discount.value
+  if (discount.value != null && discount.value > 0) total -= discount.value
 
   return total.toFixed(2)
 })
@@ -221,10 +218,15 @@ onMounted(async () => {
                     >
                   </p>
                   <div class="item-mobile-price mobile-only">
-                    <span v-if="item.product?.promocjaWProc > 0" class="old-price-strike me-2">
+                    <span
+                      v-if="item.product?.promocjaWProc > 0"
+                      class="old-price-strike me-2"
+                    >
                       {{ item.product.cena.toFixed(2) }} PLN
                     </span>
-                    <span :class="{ 'text-promo': item.product?.promocjaWProc > 0 }">
+                    <span
+                      :class="{ 'text-promo': item.product?.promocjaWProc > 0 }"
+                    >
                       {{ effectivePrice(item.product).toFixed(2) }} PLN
                     </span>
                   </div>
@@ -232,7 +234,10 @@ onMounted(async () => {
               </div>
 
               <div class="item-price desktop-only">
-                <div v-if="item.product?.promocjaWProc > 0" class="old-price-strike">
+                <div
+                  v-if="item.product?.promocjaWProc > 0"
+                  class="old-price-strike"
+                >
                   {{ item.product.cena.toFixed(2) }} PLN
                 </div>
                 <div :class="{ 'text-promo': item.product?.promocjaWProc > 0 }">
@@ -249,7 +254,12 @@ onMounted(async () => {
               </div>
 
               <div class="item-total desktop-only">
-                <strong>{{ (effectivePrice(item.product) * item.ilosc).toFixed(2) }} PLN</strong>
+                <strong
+                  >{{
+                    (effectivePrice(item.product) * item.ilosc).toFixed(2)
+                  }}
+                  PLN</strong
+                >
               </div>
 
               <button
@@ -267,7 +277,12 @@ onMounted(async () => {
                   <button @click="handleUpdate(item.product, 1)">+</button>
                 </div>
                 <div class="mobile-total-box">
-                  <strong>{{ (effectivePrice(item.product) * item.ilosc).toFixed(2) }} PLN</strong>
+                  <strong
+                    >{{
+                      (effectivePrice(item.product) * item.ilosc).toFixed(2)
+                    }}
+                    PLN</strong
+                  >
                 </div>
                 <button
                   class="remove-icon-btn"
@@ -297,7 +312,9 @@ onMounted(async () => {
 
             <div v-if="totalProductsDiscount > 0" class="summary-row promo-row">
               <span>Product discounts:</span>
-              <span class="text-promo">- PLN {{ totalProductsDiscount.toFixed(2) }}</span>
+              <span class="text-promo"
+                >- PLN {{ totalProductsDiscount.toFixed(2) }}</span
+              >
             </div>
 
             <div v-if="shippingCost" class="summary-row">
@@ -436,13 +453,14 @@ onMounted(async () => {
     </div>
   </div>
   <Checkout
-  :show="showCheckout"
-  :discount-amount="totalProductsDiscount"
-  @close="showCheckout = false"
-  @continue-to-payment="goToPaymentStep"
-/>
+    :show="showCheckout"
+    :discount-amount="totalProductsDiscount"
+    @close="showCheckout = false"
+    @continue-to-payment="goToPaymentStep"
+  />
   <PaymentCheckout
     :show="showPayment"
+    :discount-amount="totalProductsDiscount"
     @close="showPayment = false"
     @back="backToCheckoutStep"
     @order-placed="loadCart"
@@ -663,7 +681,6 @@ onMounted(async () => {
   color: #3f509e;
 }
 
-/* Nowe / Zaktualizowane klasy dla przecen */
 .old-price-strike {
   text-decoration: line-through;
   color: #8a8fb9;
