@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, onMounted } from "vue"
 import api from "@/services/axios.js"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
 import {
   cartItems,
   cartSum,
@@ -39,6 +41,8 @@ const finalOrderItems = ref([])
 const finalOrderTotal = ref(0)
 const finalOrderId = ref("Pending")
 
+const isDownloading = ref(false)
+
 const blikCode = ref("")
 const cardData = ref({ cardNumber: "", date: "", ccv: "" })
 const bankTransferDetails = ref({
@@ -65,8 +69,8 @@ const isPaymentValid = () => {
 
 const paymentMethods = [
   { id: 1, name: "BLIK", icon: "fa-solid fa-mobile-screen" },
-  { id: 2, name: "Karta płatnicza", icon: "fa-regular fa-credit-card" },
-  { id: 3, name: "Szybki przelew", icon: "fa-solid fa-building-columns" },
+  { id: 2, name: "Credit Card", icon: "fa-regular fa-credit-card" },
+  { id: 3, name: "Bank Transfer", icon: "fa-solid fa-building-columns" },
 ]
 
 const totalOrderSum = computed(() => {
@@ -136,7 +140,6 @@ const handleFinalizeOrder = async () => {
   let paymentAmount = totalOrderSum.value
 
   if (!selectedPayment.value || !isPaymentValid()) {
-    console.log("niepoprawne dane")
     return
   }
 
@@ -173,14 +176,13 @@ const handleFinalizeOrder = async () => {
     if (isLoggedIn.value)
       response = await api.post("users/orders", orderPayload)
     else response = await api.post("users/orders/guest", orderPayload)
+    
     finalOrderItems.value = [...cartItems.value]
     finalOrderTotal.value = paymentAmount
-
     finalOrderId.value = response?.data?.idZamowienia || "N/A"
-    // finalOrderId.value = 55
-    console.log(finalOrderItems.value)
+
     if (selectedPayment.value.id === 3) {
-      bankTransferDetails.value.title = `Order #${finalOrderId.value}`
+      bankTransferDetails.value.title = `ORDER #${finalOrderId.value}`
     }
     clearCart()
     emit("order-placed")
@@ -191,6 +193,174 @@ const handleFinalizeOrder = async () => {
     isSubmitting.value = false
   }
 }
+
+const downloadInvoice = async () => {
+  if (isDownloading.value) return
+  isDownloading.value = true
+
+  try {
+    const doc = new jsPDF()
+
+    try {
+      const fontUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf"
+      const response = await fetch(fontUrl)
+      const fontBuffer = await response.arrayBuffer()
+      
+      let binary = ''
+      const bytes = new Uint8Array(fontBuffer)
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i])
+      }
+      const fontBase64 = window.btoa(binary)
+      
+      doc.addFileToVFS('Roboto-Regular.ttf', fontBase64)
+      doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal')
+      doc.setFont('Roboto')
+    } catch (fontError) {
+      console.warn("Failed to load Polish font for PDF.", fontError)
+    }
+
+    const colDarkBlue = [21, 24, 117]
+    const colPink = [251, 46, 134]
+    const colGrayText = [138, 143, 185]
+    const colLightBg = [251, 251, 254]
+
+    doc.setFontSize(26)
+    doc.setTextColor(...colDarkBlue)
+    doc.text("INVOICE", 14, 25)
+    
+    doc.setDrawColor(...colPink)
+    doc.setLineWidth(1.5)
+    doc.line(14, 28, 45, 28)
+
+    doc.setFontSize(10)
+    doc.setTextColor(...colGrayText)
+    doc.text(`Invoice Number: INV/${new Date().getFullYear()}/${finalOrderId.value}`, 125, 20)
+    doc.text(`Issue Date: ${new Date().toLocaleDateString('en-GB')}`, 125, 26)
+
+    doc.setFillColor(...colLightBg)
+    doc.roundedRect(14, 40, 85, 45, 3, 3, 'F')
+    doc.roundedRect(110, 40, 85, 45, 3, 3, 'F')
+
+    doc.setFontSize(11)
+    doc.setTextColor(...colDarkBlue)
+    doc.text("Seller:", 18, 48)
+    doc.setFontSize(10)
+    doc.setTextColor(80)
+    doc.text("Sklep Kotika", 18, 55)
+    doc.text("Stefana Banacha 22, Lodz, Poland", 18, 60)
+    doc.text("Tel: +48 591 182 321", 18, 65)
+    doc.text("Email: shop@kotika.com", 18, 70)
+    doc.text("90-238 Lodz", 18, 75)
+    doc.text("NIP: 1234567890", 18, 80)
+
+    doc.setFontSize(11)
+    doc.setTextColor(...colDarkBlue)
+    doc.text("Buyer:", 114, 48)
+    doc.setFontSize(10)
+    doc.setTextColor(80)
+    doc.text(`${addressForm.value.firstName} ${addressForm.value.lastName}`, 114, 55)
+    const apt = addressForm.value.aptNo ? `/${addressForm.value.aptNo}` : ''
+    doc.text(`${addressForm.value.street} ${addressForm.value.buildingNo}${apt}`, 114, 60)
+    doc.text(`${addressForm.value.postalCode} ${addressForm.value.city}`, 114, 65)
+    doc.text(`Tel: ${addressForm.value.phone}`, 114, 70)
+    doc.text(`Email: ${addressForm.value.email}`, 114, 75)
+
+    doc.setFillColor(...colLightBg)
+    doc.roundedRect(14, 90, 181, 22, 3, 3, 'F')
+
+    doc.setFontSize(10)
+    doc.setTextColor(...colDarkBlue)
+    doc.text("Payment & Delivery Details:", 18, 98)
+    doc.setFontSize(9)
+    doc.setTextColor(80)
+    doc.text(`Payment Method: ${selectedPayment.value?.name || "Not selected"}`, 18, 105)
+    doc.text(`Delivery Method: ${selectedDelivery.value?.name || "Not selected"}`, 114, 105)
+
+    const tableData = finalOrderItems.value.map((item, index) => [
+      index + 1,
+      item.product.nazwaProduktu || "Product",
+      item.ilosc,
+      `${(item.product.cenaPoPromocji || 0).toFixed(2)} PLN`,
+      `${(item.ilosc * (item.product.cenaPoPromocji || 0)).toFixed(2)} PLN`
+    ])
+
+    if (shippingCost.value > 0) {
+      tableData.push([
+        '',
+        `Delivery: ${selectedDelivery.value?.name || "Shipping cost"}`,
+        '1',
+        `${shippingCost.value.toFixed(2)} PLN`,
+        `${shippingCost.value.toFixed(2)} PLN`
+      ])
+    }
+
+    if (appliedDiscount.value > 0) {
+      tableData.push([
+        '',
+        `Applied discount ${discount.value ? '('+discount.value.znizkaProcentowa+'%)' : ''}`,
+        '1',
+        `-${appliedDiscount.value.toFixed(2)} PLN`,
+        `-${appliedDiscount.value.toFixed(2)} PLN`
+      ])
+    }
+
+    autoTable(doc, {
+      startY: 120,
+      head: [['No.', 'Product Name', 'Quantity', 'Unit Price', 'Total Price']],
+      body: tableData,
+      theme: 'grid',
+      styles: {
+        font: 'Roboto',
+        fontSize: 10,
+        cellPadding: 6,
+        lineColor: [234, 232, 245],
+        lineWidth: 0.1,
+      },
+      headStyles: { 
+        fillColor: colDarkBlue,
+        textColor: 255,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 20 },
+        2: { halign: 'center', cellWidth: 30 },
+        3: { halign: 'right', cellWidth: 35 },
+        4: { halign: 'right', cellWidth: 35 }
+      },
+      alternateRowStyles: {
+        fillColor: colLightBg
+      }
+    })
+
+    const finalY = doc.lastAutoTable.finalY || 120
+
+    doc.setDrawColor(194, 198, 226)
+    doc.setLineDash([2, 2], 0)
+    doc.line(135, finalY + 10, 196, finalY + 10)
+    doc.setLineDash([], 0)
+
+    doc.setFontSize(12)
+    doc.setTextColor(...colDarkBlue)
+    doc.text(`Total Paid:`, 135, finalY + 20)
+    
+    doc.setFontSize(14)
+    doc.setTextColor(...colPink)
+    doc.text(`${finalOrderTotal.value} PLN`, 196, finalY + 20, { align: 'right' })
+
+    doc.setFontSize(9)
+    doc.setTextColor(...colGrayText)
+    doc.text("Document generated electronically. Thank you for shopping at Kotika store!", 105, 280, { align: 'center' })
+
+    doc.save(`Invoice_${finalOrderId.value}.pdf`)
+  } catch (err) {
+    console.error("Invoice generation error:", err)
+  } finally {
+    isDownloading.value = false
+  }
+}
+
 const closeSuccessModal = () => {
   emit("close")
   setTimeout(() => {
@@ -199,6 +369,7 @@ const closeSuccessModal = () => {
     placedOrderFlag.value = false
   }, 300)
 }
+
 onMounted(async () => {
   await loadAddresses()
 })
@@ -237,11 +408,11 @@ onMounted(async () => {
                     {{ addressForm.phone }}</span
                   >
                 </div>
-                <div class="summary-item mt-2">
+                <div class="summary-item mt-3">
                   <span class="label">Delivery method:</span>
                   <span class="value">{{ selectedDelivery?.name }}</span>
                 </div>
-                <div v-if="!isLocalDelivery" class="summary-item mt-2">
+                <div v-if="!isLocalDelivery" class="summary-item mt-3">
                   <span class="label">Delivery address:</span>
                   <span class="value"
                     >{{ addressForm.street }} {{ addressForm.buildingNo
@@ -296,14 +467,14 @@ onMounted(async () => {
                     type="text"
                     maxlength="7"
                     placeholder="000 000"
-                    class="input-field"
+                    class="input-field mt-2"
                   />
                 </div>
                 <div v-if="selectedPayment.id === 2" class="card-form">
                   <input
                     v-model="cardData.cardNumber"
                     placeholder="Card number"
-                    class="input-field mb-2"
+                    class="input-field mb-3"
                   />
                   <div class="row-flex">
                     <input
@@ -319,17 +490,17 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div v-if="selectedPayment.id === 3" class="transfer-info">
-                  <p>Please make a transfer to the following account:</p>
+                  <p class="mb-3">Please make a transfer to the following account:</p>
                   <div class="info-box">
                     <strong>Account:</strong>
                     {{ bankTransferDetails.accountNumber }}<br />
-                    <strong>Title:</strong> ORDER #[will be generated]
+                    <strong class="mt-2" style="display:inline-block">Title:</strong> ORDER #[will be generated]
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="order-summary-box p-3 mt-4 mb-2">
+            <div class="order-summary-box p-4 mt-4 mb-2">
               <div class="summary-line total-line">
                 <span>Total to Pay:</span>
                 <span class="total-price">PLN {{ totalOrderSum }}</span>
@@ -360,20 +531,20 @@ onMounted(async () => {
                   <span>Account:</span>
                   <strong>{{ bankTransferDetails.accountNumber }}</strong>
                 </div>
-                <div class="detail-row mt-2">
+                <div class="detail-row mt-3">
                   <span>Title:</span>
                   <strong>{{ bankTransferDetails.title }}</strong>
                 </div>
               </div>
             </div>
 
-            <div class="order-summary-box p-3 mt-4">
+            <div class="order-summary-box p-4 mt-4">
               <h4
-                class="mb-3"
+                class="mb-4"
                 style="
                   color: #151875;
                   border-bottom: 1px solid #eae8f5;
-                  padding-bottom: 5px;
+                  padding-bottom: 12px;
                 "
               >
                 Items Ordered:
@@ -381,7 +552,7 @@ onMounted(async () => {
               <div
                 v-for="(item, index) in finalOrderItems"
                 :key="index"
-                class="summary-line mb-2"
+                class="summary-line mb-3"
               >
                 <span style="flex: 2">{{
                   item.product.nazwaProduktu || "Product"
@@ -394,7 +565,7 @@ onMounted(async () => {
                 >
               </div>
               <div
-                class="summary-line total-line mt-3 pt-3"
+                class="summary-line total-line mt-4 pt-4"
                 style="border-top: 2px dashed #c2c6e2"
               >
                 <span>Total Paid:</span>
@@ -423,13 +594,23 @@ onMounted(async () => {
           </template>
 
           <template v-else>
-            <button
-              class="btn-primary"
-              style="width: 100%"
-              @click="closeSuccessModal"
-            >
-              Continue Shopping
-            </button>
+            <div style="display: flex; flex-direction: column; width: 100%; gap: 12px;">
+              <button
+                class="btn-secondary"
+                style="width: 100%"
+                @click="downloadInvoice"
+                :disabled="isDownloading"
+              >
+                <i class="fa-solid fa-file-pdf"></i> {{ isDownloading ? "Generating..." : "Download Invoice" }}
+              </button>
+              <button
+                class="btn-primary"
+                style="width: 100%"
+                @click="closeSuccessModal"
+              >
+                Continue Shopping
+              </button>
+            </div>
           </template>
         </div>
       </div>
@@ -459,6 +640,9 @@ onMounted(async () => {
 .p-3 {
   padding: 1.5rem;
 }
+.p-4 {
+  padding: 1.75rem;
+}
 
 .modal-mask {
   position: fixed;
@@ -477,7 +661,7 @@ onMounted(async () => {
 
 .modal-container {
   width: 100%;
-  max-width: 650px;
+  max-width: 680px;
   max-height: 90vh;
   background-color: #ffffff;
   border-radius: 16px;
@@ -488,7 +672,7 @@ onMounted(async () => {
 }
 
 .modal-header {
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem 2rem;
   background-color: #fbfbfe;
   border-bottom: 1px solid #eae8f5;
   display: flex;
@@ -513,7 +697,7 @@ onMounted(async () => {
 }
 
 .modal-body {
-  padding: 1.5rem 2rem;
+  padding: 2rem 2.5rem;
   overflow-y: auto;
   background-color: #ffffff;
 }
@@ -528,7 +712,7 @@ onMounted(async () => {
 }
 
 .section-hint {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #8a8fb9;
   margin: 0;
 }
@@ -537,13 +721,13 @@ onMounted(async () => {
   background: #fbfbfe;
   border: 1px solid #eae8f5;
   border-radius: 8px;
-  padding: 1rem;
+  padding: 1.75rem;
 }
 
 .summary-item {
   display: flex;
   flex-direction: column;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .summary-item .label {
@@ -560,44 +744,44 @@ onMounted(async () => {
 .payment-layout {
   display: flex;
   flex-direction: row;
-  gap: 12px;
+  gap: 16px;
 }
 
 .input-field {
   width: 100%;
-  padding: 10px;
+  padding: 14px;
   border: 1px solid #dcdcdc;
-  border-radius: 6px;
+  border-radius: 8px;
   box-sizing: border-box;
 }
 
 .payment-details-box {
   background: #f8f9ff;
-  padding: 1rem;
+  padding: 1.75rem;
   border-radius: 8px;
   border: 1px solid #eae8f5;
 }
 
 .row-flex {
   display: flex;
-  gap: 10px;
+  gap: 14px;
 }
 
 .info-box {
   background: white;
-  padding: 10px;
+  padding: 16px;
   border-left: 4px solid #3f509e;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #151875;
 }
 
 .card-form input {
-  margin-bottom: 8px;
+  margin-bottom: 14px;
 }
 
 .payment-card-option {
   flex: 1;
-  height: 90px;
+  height: 105px;
   background: #ffffff;
   border: 1px solid #dcdcdc;
   border-radius: 8px;
@@ -605,8 +789,8 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px 8px;
+  gap: 10px;
+  padding: 16px 10px;
   text-align: center;
   cursor: pointer;
   position: relative;
@@ -628,28 +812,28 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .payment-option-icon {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   color: #3f509e;
 }
 
 .payment-option-name {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #151875;
 }
 
 .checked-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -8px;
+  right: -8px;
   background: #ffffff;
   color: #7e4cd4;
   border-radius: 50%;
-  font-size: 0.95rem;
+  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -658,14 +842,14 @@ onMounted(async () => {
 }
 
 .error-text {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: #e03a5b;
   font-weight: 500;
 }
 
 .discount-input-group {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   transition: all 0.3s ease;
 }
 
@@ -688,8 +872,8 @@ onMounted(async () => {
   background-color: #151875;
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 0 20px;
+  border-radius: 8px;
+  padding: 0 24px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -727,7 +911,7 @@ onMounted(async () => {
 }
 
 .total-line {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #151875;
   margin-bottom: 0;
@@ -735,21 +919,21 @@ onMounted(async () => {
 
 .total-price {
   color: #fb2e86;
-  font-size: 1.25rem;
+  font-size: 1.4rem;
 }
 
 .modal-footer {
-  padding: 1.25rem 2rem;
+  padding: 1.5rem 2.5rem;
   background-color: #fbfbfe;
   border-top: 1px solid #eae8f5;
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .btn-primary,
 .btn-secondary {
-  padding: 0.75rem 1.75rem;
+  padding: 0.85rem 2rem;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
@@ -793,60 +977,71 @@ button:disabled {
 }
 .success-header-content {
   text-align: center;
-  padding: 1rem 0;
+  padding: 2rem 0;
 }
 
 .success-icon {
-  font-size: 3.5rem;
+  font-size: 4rem;
   color: #10b981;
 }
 
 .success-header-content h3 {
   color: #151875;
-  margin-top: 10px;
-  margin-bottom: 5px;
+  margin-top: 16px;
+  margin-bottom: 8px;
 }
 
 .order-number-text {
   color: #8a8fb9;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
 }
 
 .bank-transfer-alert {
   background-color: #fff8e1;
   border-left: 4px solid #f59e0b;
-  border-radius: 6px;
-  padding: 1.25rem;
+  border-radius: 8px;
+  padding: 1.75rem;
   color: #4a405c;
 }
 
 .alert-title {
   color: #b45309;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.75rem 0;
 }
 
 .bank-details-box {
   background-color: rgba(255, 255, 255, 0.7);
-  padding: 1rem;
-  border-radius: 6px;
+  padding: 1.5rem;
+  border-radius: 8px;
   border: 1px solid #fde68a;
-  margin-top: 10px;
+  margin-top: 16px;
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 1.05rem;
 }
 
 .pt-3 {
   padding-top: 1rem;
 }
+.pt-4 {
+  padding-top: 1.5rem;
+}
+
 @media (max-width: 600px) {
   .modal-body {
     padding: 1.5rem;
+  }
+  .modal-header {
+    padding: 1.25rem 1.5rem;
+  }
+  .modal-footer {
+    padding: 1.25rem 1.5rem;
   }
   .payment-layout {
     flex-direction: column;
